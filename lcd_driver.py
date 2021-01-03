@@ -179,4 +179,5 @@ class lcd:
 
 if __name__ == "__main__":
 	a = lcd()
+	a.backlight(0)
 	a.lcd_display_string("HELLO")
