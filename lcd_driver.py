@@ -178,6 +178,18 @@ class lcd:
             self.lcd_write_char(line)
 
 if __name__ == "__main__":
-	a = lcd()
-	a.backlight(0)
-	a.lcd_display_string("HELLO")
+   from sys import argv
+   import subprocess
+   try:
+      if argv[1] == "setIP":
+         st = subprocess.Popen(["hostname", "-I"],
+                              stdout = subprocess.PIPE,
+                              universal_newlines = True)
+         ipTUP= st.communicate()
+         ip = ipTUP[0].strip("\n")
+         a = lcd()
+         a.lcd_display_string("IP: "+ip)
+   except IndexError:
+      a = lcd()
+      a.backlight(0)
+      a.lcd_display_string("Initialized")
