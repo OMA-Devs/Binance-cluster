@@ -16,3 +16,4 @@ payload= {"sym": config.symbol}
 r = requests.get('http://'+config.masterIP+config.masterPATH+'/getSym.php', params=payload)
 text = r.text
 final = parseSTRtoLIST(text)
+print(final)
