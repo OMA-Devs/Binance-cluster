@@ -231,6 +231,6 @@ if __name__ == "__main__":
 		tradeable = getTradeable()
 		print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
 		for sym in tradeable:
-			print(sym)
+			#print(sym)
 			kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
 			a = AT(client, sym, kline)
