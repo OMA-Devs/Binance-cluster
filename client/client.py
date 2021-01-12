@@ -4,6 +4,7 @@ import requests
 from os import environ
 import config
 from binance.client import Client
+from binance.enums import *
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -34,6 +35,23 @@ def getTradeable():
 	text = r.text
 	final = parseSTRtoLIST(text)
 	return final
+
+def openTrade(pair, sym, lim, sto):
+	eurP = Decimal(client.get_symbol_ticker(symbol=sym+"EUR")["price"])
+	act = Decimal(client.get_symbol_ticker(symbol=pair)["price"])
+	qty = 5/eurP
+	for bal in client.get_account()["balances"]:
+		if bal["asset"] == sym:
+			if Decimal(bal['free']) > qty:
+				print("Ejecutando Orden de compra")
+				client.order_market_buy(symbol=pair, quantity=qty)
+	for bal in client.get_account()["balances"]:
+		if bal["asset"] == pair.strip(sym):
+			print("Emplazando Orden OCO")
+			client.create_oco_order(symbol=pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+				quantity=Decimal(bal["free"]),
+				stopPrice=(act/100)*sto,
+				price=(act/100)*lim)
 
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
@@ -175,7 +193,7 @@ class AT:
 			act = Decimal(self.client.get_symbol_ticker(symbol= self.pair)["price"])
 			if (act/100)*self.limitPrice < self.maxDay and act <= (self.medDay/100)*self.limitPrice:
 				print(self.pair+"- STAGE 2- Cualifica")
-				#AQUI ABRIRIA TRADE
+				openTrade(self.pair,config.symbol,self.limitPrice,self.stopPrice)
 				logName = self.pair+"-"+str(datetime.now().date())
 				mesARR = ["-"*60,
 					self.pair+" MONITOR",
@@ -188,8 +206,6 @@ class AT:
 					"Stop: "+f"{((act/100)*self.stopPrice):.15f}"]
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
-				for mes in mesARR:
-					print(mes)
 				logger(logName, mesARR)
 			else:
 				self.monitor = False
@@ -226,6 +242,8 @@ class AT:
 		else:
 			self.monitor = False
 
+
+
 if __name__ == "__main__":
 	while True:
 		tradeable = getTradeable()
@@ -234,3 +252,5 @@ if __name__ == "__main__":
 			#print(sym)
 			kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
 			a = AT(client, sym, kline)
+
+	
