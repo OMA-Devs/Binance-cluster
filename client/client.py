@@ -48,10 +48,12 @@ def openTrade(pair, sym, lim, sto):
 	for bal in client.get_account()["balances"]:
 		if bal["asset"] == pair.strip(sym):
 			print("Emplazando Orden OCO")
+			qty = bal["free"]
+			qtySTR = f"{qty:.5f}"
 			client.create_oco_order(symbol=pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
-				quantity=Decimal(bal["free"]),
-				stopPrice=(act/100)*sto,
-				price=(act/100)*lim)
+				quantity=qtySTR,
+				stopPrice=f"{((act/100)*sto):.5f}",
+				price=f"{((act/100)*lim):.5f}")
 
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
