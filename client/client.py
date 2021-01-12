@@ -44,7 +44,7 @@ def openTrade(pair, sym, lim, sto):
 		if bal["asset"] == sym:
 			if Decimal(bal['free']) > qty:
 				print("Ejecutando Orden de compra")
-				client.order_market_buy(symbol=pair, quantity=qty)
+				client.order_market_buy(symbol=pair, quantity=f"{qty:.5f}")
 	for bal in client.get_account()["balances"]:
 		if bal["asset"] == pair.strip(sym):
 			print("Emplazando Orden OCO")
