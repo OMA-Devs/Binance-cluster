@@ -44,16 +44,22 @@ def openTrade(pair, sym, lim, sto):
 		if bal["asset"] == sym:
 			if Decimal(bal['free']) > qty:
 				print("Ejecutando Orden de compra")
-				client.order_market_buy(symbol=pair, quantity=f"{qty:.5f}")
+				i = input("¿Crear orden?")
+				if i == "y":
+					client.order_market_buy(symbol=pair, quantity=f"{qty:.5f}")
+				else:
+					pass
 	for bal in client.get_account()["balances"]:
 		if bal["asset"] == pair.strip(sym):
 			print("Emplazando Orden OCO")
-			qty = bal["free"]
-			qtySTR = f"{qty:.5f}"
-			client.create_oco_order(symbol=pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
-				quantity=qtySTR,
-				stopPrice=f"{((act/100)*sto):.5f}",
-				price=f"{((act/100)*lim):.5f}")
+			i = input("Crear OCO?")
+			if i == "y":
+				qty = bal["free"]
+				qtySTR = f"{qty:.5f}"
+				client.create_oco_order(symbol=pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+					quantity=qtySTR,
+					stopPrice=f"{((act/100)*sto):.5f}",
+					price=f"{((act/100)*lim):.5f}")
 
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
@@ -247,12 +253,14 @@ class AT:
 
 
 if __name__ == "__main__":
-	while True:
+	'''while True:
 		tradeable = getTradeable()
 		print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
 		for sym in tradeable:
 			#print(sym)
 			kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
-			a = AT(client, sym, kline)
+			a = AT(client, sym, kline)'''
+
+	print(client.get_ticker(symbol="CVCBTC"))
 
 	
