@@ -253,14 +253,19 @@ class AT:
 
 
 if __name__ == "__main__":
-	'''while True:
-		tradeable = getTradeable()
-		print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
-		for sym in tradeable:
-			#print(sym)
-			kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
-			a = AT(client, sym, kline)'''
-
-	print(client.get_ticker(symbol="CVCBTC"))
+	while True:
+		try:
+			tradeable = getTradeable()
+			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
+			for sym in tradeable:
+				#print(sym)
+				kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
+				a = AT(client, sym, kline)
+		except (requests.exceptions.ConnectionError,
+				requests.exceptions.ConnectTimeout,
+				requests.exceptions.HTTPError,
+				requests.exceptions.ReadTimeout,
+				requests.exceptions.RetryError):
+				print("Error, saltando a siguiente comprobacion")
 
 	
