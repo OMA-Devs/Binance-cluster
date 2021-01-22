@@ -4,9 +4,10 @@ import requests
 from os import environ
 import config
 from binance.client import Client
-from binance.enums import *
+from binance.enums import SIDE_SELL, TIME_IN_FORCE_GTC
 from datetime import datetime, timedelta
 from decimal import Decimal
+from ast import literal_eval
 
 api_key = environ.get("TEST_BINANCE_API")
 api_sec = environ.get("TEST_BINANCE_SEC")
@@ -21,45 +22,12 @@ def logger(logName, mesARR):
 		print(line)
 	f.close()
 
-def parseSTRtoLIST(text):
-	stageA = text[1:-2]
-	stageB = stageA.split(",")
-	stageC = []
-	for i in stageB:
-		stageC.append(i.strip(" '"))
-	return stageC
-
 def getTradeable():
 	payload= {"sym": config.symbol}
 	r = requests.get('http://'+config.masterIP+config.masterPATH+'/getSym.php', params=payload)
 	text = r.text
-	final = parseSTRtoLIST(text)
+	final = literal_eval(text)
 	return final
-
-def openTrade(pair, sym, lim, sto):
-	eurP = Decimal(client.get_symbol_ticker(symbol=sym+"EUR")["price"])
-	act = Decimal(client.get_symbol_ticker(symbol=pair)["price"])
-	qty = 5/eurP
-	for bal in client.get_account()["balances"]:
-		if bal["asset"] == sym:
-			if Decimal(bal['free']) > qty:
-				print("Ejecutando Orden de compra")
-				i = input("¿Crear orden?")
-				if i == "y":
-					client.order_market_buy(symbol=pair, quantity=f"{qty:.5f}")
-				else:
-					pass
-	for bal in client.get_account()["balances"]:
-		if bal["asset"] == pair.strip(sym):
-			print("Emplazando Orden OCO")
-			i = input("Crear OCO?")
-			if i == "y":
-				qty = bal["free"]
-				qtySTR = f"{qty:.5f}"
-				client.create_oco_order(symbol=pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
-					quantity=qtySTR,
-					stopPrice=f"{((act/100)*sto):.5f}",
-					price=f"{((act/100)*lim):.5f}")
 
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
@@ -133,7 +101,7 @@ class AT:
 			med = med + num
 		med = med/len(nums)
 		return med
-	def getDay(self):
+	def setDay(self):
 		"""Calcula las estadisticas referentes al día
 		"""
 		MinMax = self._getMinMax(self.dayKline)
@@ -141,7 +109,7 @@ class AT:
 		self.maxDay = MinMax[1]
 		self.medDay = self._getMedium(self.dayKline)
 		self.growDay = self._getPercentage(self.dayKline)
-	def getHour(self):
+	def setHour(self):
 		"""Calcula las estadisticas referentes a la ultima hora.
 		"""
 		MinMax = self._getMinMax(self.dayKline[-60:])
@@ -167,6 +135,60 @@ class AT:
 		if self.stopPrice == 0:
 			self.stopPrice = 95"""
 		pass
+	def checkRules(self):
+		act = Decimal(client.get_symbol_ticker(symbol=self.pair)["price"])
+		startQty = Decimal("0")
+		while True:
+			startQty = startQty+self.data["stepSize"]
+			notionalVALUE = startQty*act
+			if notionalVALUE >= self.data["minNotional"] and startQty >= self.data["minQty"]: ##Se cumple el check minNOTIONAL
+				eurP = Decimal(client.get_symbol_ticker(symbol=config.symbol+"EUR")["price"])
+				qtyEUR = notionalVALUE*eurP
+				if startQty>self.data["minQty"] and (startQty-self.data["minQty"])%self.data["stepSize"] == 0:
+					self.qtys["baseQty"] = f"{startQty:{self.data['precision']}}"
+					self.qtys["eurQty"] = f"{qtyEUR:{self.data['precision']}}"
+					self.qtys["assetQty"] = f"{notionalVALUE:{self.data['precision']}}"
+					msg = [f"Trading Rules Check PASSED",
+						"Price:"+f"{act:{self.data['precision']}}",
+						"EUR TO TRADE: "+f"{qtyEUR:{self.data['precision']}}",
+						config.symbol+" TO TRADE: "+f"{notionalVALUE:{self.data['precision']}}",
+						"qty: "+f"{startQty:{self.data['precision']}}"]
+					logger(self.logName, msg)
+				else:
+					msg= [f"Trading Rules Check NOT PASSED"]
+					logger(self.logName, msg)
+	def openTrade(self):
+		msg = []
+		balance = self.client.get_account()["balances"]
+		for bal in balance:
+			if bal["asset"] == config.symbol:
+				if Decimal(bal['free']) > Decimal(self.qtys["assetQty"]):
+					msg.append("Ejecutando Orden de compra")
+					self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
+					msg.append("Orden de compra ejecutada")
+					logger(self.logName, msg)
+				else:
+					msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
+					logger(self.logName,msg)
+			else:
+				msg.append("No existe el ASSET en el balance.")
+				logger(self.logName,msg)
+		msg = []
+		for bal in balance:
+			if bal["asset"] == self.pair.strip(config.symbol):
+				msg.append("Emplazando Orden OCO")
+				qty = f"{Decimal(bal['free']):{self.data['precision']}}"
+				act = Decimal(client.get_symbol_ticker(symbol=self.pair)["price"])
+				client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+					quantity=qty,
+					stopPrice=f"{((act/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
+					price=f"{((act/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
+					stopLimitPrice=f"{((act/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
+				msg.append("OCO emplazada")
+				logger(self.logName,msg)
+			else:
+				msg.append("OCO NO emplazada, no se posee el token. Posible error en operacion de compra.")
+				logger(self.logName,msg)
 	def startingAnalisys(self):
 		"""[summary]
 		"""
@@ -201,8 +223,9 @@ class AT:
 			act = Decimal(self.client.get_symbol_ticker(symbol= self.pair)["price"])
 			if (act/100)*self.limitPrice < self.maxDay and act <= (self.medDay/100)*self.limitPrice:
 				print(self.pair+"- STAGE 2- Cualifica")
-				openTrade(self.pair,config.symbol,self.limitPrice,self.stopPrice)
-				logName = self.pair+"-"+str(datetime.now().date())
+				self.logName = self.pair+"-"+str(datetime.now().date())
+				self.checkRules()
+				self.openTrade()
 				mesARR = ["-"*60,
 					self.pair+" MONITOR",
 					str(datetime.now()),
@@ -214,21 +237,22 @@ class AT:
 					"Stop: "+f"{((act/100)*self.stopPrice):.15f}"]
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
-				logger(logName, mesARR)
+				logger(self.logName, mesARR)
 			else:
 				self.monitor = False
 	def __init__(self, client, pair, dayKline):
 		"""[summary]
 
 		Args:
-			client ([type]): [description]
-			pair ([type]): [description]
-			monitorPERC ([type]): [description]
+			client (binance.client.Client): instancia de cliente
+			pair (DICT): Diccionario con el simbolo y reglas de trading relacionadas.
+			dayKline(LIST): Kline de 24h minuto a minuto.
 		"""
 		if len(dayKline) > 0:
 			#print("NOT IN TRADING")
 			self.client = client
-			self.pair = pair
+			self.data = pair
+			self.pair = self.data["symbol"]
 			self.dayKline = dayKline #kline de la ultima hora, minuto a minuto.
 			self.minDay = 0 #Precio minimo del dia
 			self.maxDay = 0 #Precio maximo del dia
@@ -243,8 +267,12 @@ class AT:
 			self.monitor = False
 			self.limitPrice = 105 # Porcentaje maximo para salir de la posicion.
 			self.stopPrice = 95 # Porcentaje minimo para vender.
-			self.getHour()
-			self.getDay()
+			self.setHour()
+			self.setDay()
+			self.logName = ""
+			self.qtys = {"baseQty":"",
+						"eurQty": "",
+						"assetQty":""}
 			#self.setLimits()
 			self.startingAnalisys()
 		else:
@@ -267,5 +295,3 @@ if __name__ == "__main__":
 				requests.exceptions.ReadTimeout,
 				requests.exceptions.RetryError):
 				print("Error, saltando a siguiente comprobacion")
-
-	

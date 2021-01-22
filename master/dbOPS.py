@@ -30,7 +30,21 @@ class DB:
 		db.commit()
 		#Obtiene todos los simbolos del exchange e itera sobre ellos.
 		for sym in self.client.get_exchange_info()["symbols"]:
-			cur.execute('INSERT INTO symbols VALUES("'+sym["symbol"]+'","-","-")')
+			minNotional = "-"
+			minQty = "-"
+			stepSize = "-"
+			precision = "-"
+			for filt in sym["filters"]:
+				if filt["filterType"] == "MIN_NOTIONAL":
+					minNotional = filt["minNotional"]
+				elif filt["filterType"] == "LOT_SIZE":
+					minQty = filt["minQty"]
+					stepSize = filt["stepSize"]
+			try:
+				precision = sym["baseAssetPrecision"]
+			except KeyError:
+				pass
+			cur.execute('INSERT INTO symbols VALUES("'+sym["symbol"]+'","'+minNotional+'","'+minQty+'","'+stepSize+'","'+str(precision)+'")')
 			db.commit()
 			if sym["symbol"] in old:
 				pass
@@ -41,20 +55,28 @@ class DB:
 		print("- DIFF: "+str(diff))
 	def getSymbols(self):
 		"""Obtiene una lista de pares limpia de la base de datos.
-		Requiere tratamiento porque la base de datos devuelve tuplas, aunque sean de un solo elemento.
+		Requiere tratamiento porque la base de datos devuelve tuplas.
+		El tratamiento convierte las tuplas en diccionarios de mas facil utilización.
 
 		Returns:
-			[List]: Lista con todos los simbolos en formato de cadenas de texto.
+			[List]: Lista con todos los simbolos en formato de cadenas de texto y sus
+			reglas de trading.
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT symbol FROM symbols")
+		cur.execute("SELECT symbol, minNotional, minQty, stepSize, precision FROM symbols")
 		symList = cur.fetchall()
 		db.close()
 		clean = []
 		#Itera sobre la lista obtenida de la base de datos y convierte las tuplas de un solo elemento en cadenas.
 		for i in symList:
-			clean.append(i[0])
+			d = {}
+			d["symbol"] = i[0]
+			d["minNotional"] = i[1]
+			d["minQty"] = i[2]
+			d["stepSize"] = i[3]
+			d["precision"] = i[4]
+			clean.append(d)
 		return clean
 	def getTRADING(self):
 		"""Obtiene los simbolos en trading activo.
@@ -92,8 +114,8 @@ class DB:
 		buyable = []
 		for sym in symList:
 			Lass = len(baseSym)
-			if sym[Lass-Lass*2:] == baseSym:
-				if self.getTRADINGsingle(sym) == False:
+			if sym["symbol"][Lass-Lass*2:] == baseSym:
+				if self.getTRADINGsingle(sym["symbol"]) == False:
 					buyable.append(sym)
 		#print(len(buyable))
 		return buyable
