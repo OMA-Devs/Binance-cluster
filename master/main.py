@@ -12,7 +12,6 @@ real_api_sec = os.environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
 
 db = DB("binance.db", client)
-#print(db.getTRADEABLE("ETH"))
 assets = db.getTRADEABLE(argv[1])
 print(assets)
 

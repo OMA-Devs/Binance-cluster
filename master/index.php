@@ -18,14 +18,14 @@
 	<h1 class="w3-center">Trading Management</h1>
 </div>
 <div class="w3-bar">
-	<p class="w3-bar-item w3-button w3-mobile">Inicio</p>
-	<p class="w3-bar-item w3-button w3-mobile">Inicio</p>
-	<p class="w3-bar-item w3-button w3-mobile">Inicio</p>
-	<p class="w3-bar-item w3-button w3-mobile">Inicio</p>
+	<p class="w3-bar-item w3-button w3-mobile">Trading</p>
+	<p class="w3-bar-item w3-button w3-mobile">Traded</p>
+	<p class="w3-bar-item w3-button w3-mobile">Section</p>
+	<p class="w3-bar-item w3-button w3-mobile">Section</p>
 </div>
-<h1 class="w3-button" onclick='genericCall(["sym"],["BTC"],"getSym.php","PARES")'>PRUEBA BTC</h1>
 <h1 class="w3-button" onclick='genericCall(["sym"],["ETH"],"getSym.php","PARES")'>PRUEBA ETH</h1>
 <h1 class="w3-button" onclick='genericCall(["sym"],["BNB"],"getSym.php","PARES")'>PRUEBA BNB</h1>
-<div id="PARES">
+<h1 class="w3-button" onclick='genericCall(["sym"],["BTCEUR"],"getGraph.php","PARES")'>PRUEBA Grafico</h1>
+<div id="PARES"></div>
 </body>
 </html>

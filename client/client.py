@@ -240,6 +240,20 @@ class AT:
 				logger(self.logName, mesARR)
 			else:
 				self.monitor = False
+				print(self.pair+"- STAGE 2- NO Cualifica")
+				mesARR = ["-"*60,
+					self.pair+" MONITOR",
+					str(datetime.now()),
+					"DAY min/med/max: "+ f"{self.minDay:.15f}"+" / "+f"{self.medDay:.15f}"+" / "+f"{self.maxDay:.15f}",
+					"HOUR min/med/max: "+ f"{self.min1h:.15f}"+" / "+f"{self.med1h:.15f}"+" / "+f"{self.max1h:.15f}",
+					"Day/1h grow: "+ str(self.growDay)+"% / "+str(self.grow1hTOT)+"%",
+					"Entrada:"+f"{act:.15f}",
+					"Limit: "+f"{((act/100)*self.limitPrice):.15f}",
+					"Stop: "+f"{((act/100)*self.stopPrice):.15f}"]
+				for line in self.grow1h[-3:]:
+					mesARR.append("--: "+str(line)+"%")
+				for line in mesARR:
+					print(line)
 	def __init__(self, client, pair, dayKline):
 		"""[summary]
 
