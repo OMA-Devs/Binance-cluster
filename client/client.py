@@ -245,7 +245,7 @@ class AT:
 			else:
 				self.monitor = False
 				print(self.pair+"- STAGE 2- NO Cualifica")
-				mesARR = ["-"*60,
+				'''mesARR = ["-"*60,
 					self.pair+" MONITOR",
 					str(datetime.now()),
 					"DAY min/med/max: "+ f"{self.minDay:.15f}"+" / "+f"{self.medDay:.15f}"+" / "+f"{self.maxDay:.15f}",
@@ -257,7 +257,7 @@ class AT:
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				for line in mesARR:
-					print(line)
+					print(line)'''
 	def __init__(self, client, pair, dayKline):
 		"""[summary]
 
