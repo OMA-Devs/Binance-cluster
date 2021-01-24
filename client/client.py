@@ -26,8 +26,12 @@ def getTradeable():
 	payload= {"sym": config.symbol}
 	r = requests.get('http://'+config.masterIP+config.masterPATH+'/getSym.php', params=payload)
 	text = r.text
-	final = literal_eval(text)
-	return final
+	try:
+		final = literal_eval(text)
+		return final
+	except SyntaxError:
+		print("Sin respuesta de masterNode. Solicitando de nuevo.")
+		return []
 
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
@@ -266,6 +270,10 @@ class AT:
 			#print("NOT IN TRADING")
 			self.client = client
 			self.data = pair
+			self.data["minNotional"] = Decimal(self.data["minNotional"])
+			self.data["minQty"] = Decimal(self.data["minQty"])
+			self.data["stepSize"] = Decimal(self.data["stepSize"])
+			self.data["precision"] = "."+self.data["precision"]+"f"
 			self.pair = self.data["symbol"]
 			self.dayKline = dayKline #kline de la ultima hora, minuto a minuto.
 			self.minDay = 0 #Precio minimo del dia
