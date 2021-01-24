@@ -158,9 +158,9 @@ class AT:
 						config.symbol+" TO TRADE: "+f"{notionalVALUE:{self.data['precision']}}",
 						"qty: "+f"{startQty:{self.data['precision']}}"]
 					logger(self.logName, msg)
+					break
 				else:
-					msg= [f"Trading Rules Check NOT PASSED"]
-					logger(self.logName, msg)
+					pass
 	def openTrade(self):
 		msg = []
 		balance = self.client.get_account()["balances"]
