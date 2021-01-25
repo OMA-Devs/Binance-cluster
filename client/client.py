@@ -148,7 +148,7 @@ class AT:
 			if notionalVALUE >= self.data["minNotional"] and startQty >= self.data["minQty"]: ##Se cumple el check minNOTIONAL
 				eurP = Decimal(client.get_symbol_ticker(symbol=config.symbol+"EUR")["price"])
 				qtyEUR = notionalVALUE*eurP
-				if startQty>self.data["minQty"] and (startQty-self.data["minQty"])%self.data["stepSize"] == 0:
+				if startQty>self.data["minQty"] and (startQty-self.data["minQty"])%self.data["stepSize"] == 0 and qtyEUR >= self.maxINV:
 					self.qtys["baseQty"] = f"{startQty:{self.data['precision']}}"
 					self.qtys["eurQty"] = f"{qtyEUR:{self.data['precision']}}"
 					self.qtys["assetQty"] = f"{notionalVALUE:{self.data['precision']}}"
@@ -174,9 +174,6 @@ class AT:
 				else:
 					msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
 					logger(self.logName,msg)
-			else:
-				msg.append("No existe el ASSET en el balance.")
-				logger(self.logName,msg)
 		msg = []
 		for bal in balance:
 			if bal["asset"] == self.pair.strip(config.symbol):
@@ -189,9 +186,6 @@ class AT:
 					price=f"{((act/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
 					stopLimitPrice=f"{((act/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
 				msg.append("OCO emplazada")
-				logger(self.logName,msg)
-			else:
-				msg.append("OCO NO emplazada, no se posee el token. Posible error en operacion de compra.")
 				logger(self.logName,msg)
 	def startingAnalisys(self):
 		"""[summary]
@@ -286,6 +280,7 @@ class AT:
 			self.grow1hTOT = self._getPercentage(self.dayKline[-60:]) #Crecimiento (en porcentaje) de una hora en total
 			self.grow1h = [] #Crecimiento (en porcentaje) de la ultima hora, minuto a minuto.
 			self.monitorPERC = 1 #Porcentaje en el que si inician las operaciones y el monitoreo
+			self.maxINV = 20 #Inversion maxima en EUR. Se considerara cantidad minima segun las reglas de trading.
 			self.monitor = False
 			self.limitPrice = 105 # Porcentaje maximo para salir de la posicion.
 			self.stopPrice = 95 # Porcentaje minimo para vender.
