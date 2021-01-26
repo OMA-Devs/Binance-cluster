@@ -175,16 +175,18 @@ class AT:
 					msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
 					logger(self.logName,msg)
 		msg = []
+	def openOCO(self):
+		msg = []
+		balance = self.client.get_account()["balances"]
 		for bal in balance:
 			if bal["asset"] == self.pair.strip(config.symbol):
 				msg.append("Emplazando Orden OCO")
 				qty = f"{Decimal(bal['free']):{self.data['precision']}}"
-				act = Decimal(client.get_symbol_ticker(symbol=self.pair)["price"])
 				client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
 					quantity=qty,
-					stopPrice=f"{((act/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
-					price=f"{((act/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
-					stopLimitPrice=f"{((act/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
+					stopPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
+					price=f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
+					stopLimitPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
 				msg.append("OCO emplazada")
 				logger(self.logName,msg)
 	def startingAnalisys(self):
@@ -222,6 +224,7 @@ class AT:
 			if (act/100)*self.limitPrice < self.maxDay and act <= (self.medDay/100)*self.limitPrice:
 				print(self.pair+"- STAGE 2- Cualifica")
 				self.logName = self.pair+"-"+str(datetime.now().date())
+				self.qtys["evalPrice"] = act
 				self.checkRules()
 				self.openTrade()
 				mesARR = ["-"*60,
@@ -236,6 +239,7 @@ class AT:
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				logger(self.logName, mesARR)
+				self.openOCO()
 			else:
 				self.monitor = False
 				print(self.pair+"- STAGE 2- NO Cualifica")
@@ -289,7 +293,8 @@ class AT:
 			self.logName = ""
 			self.qtys = {"baseQty":"",
 						"eurQty": "",
-						"assetQty":""}
+						"assetQty":"",
+						"evalPrice": ""}
 			#self.setLimits()
 			self.startingAnalisys()
 		else:
