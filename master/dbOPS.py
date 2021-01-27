@@ -160,3 +160,13 @@ class DB:
 		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"'")
 		db.commit()
 		db.close()
+
+if __name__ == "__main__":
+	from os import environ
+	api_key = environ.get("TEST_BINANCE_API")
+	api_sec = environ.get("TEST_BINANCE_SEC")
+	real_api_key = environ.get("BINANCE_API_KEY")
+	real_api_sec = environ.get("BINANCE_API_SEC")
+	client = Client(real_api_key,real_api_sec)
+	db = DB("binance.db", client)
+	db.updateSymbols()
