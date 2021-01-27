@@ -163,32 +163,33 @@ class AT:
 					pass
 	def openTrade(self):
 		msg = []
-		balance = self.client.get_account()["balances"]
-		for bal in balance:
-			if bal["asset"] == config.symbol:
-				if Decimal(bal['free']) > Decimal(self.qtys["assetQty"]):
-					msg.append("Ejecutando Orden de compra")
-					self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
-					msg.append("Orden de compra ejecutada")
-					logger(self.logName, msg)
-				else:
-					msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
-					logger(self.logName,msg)
-		msg = []
+		bal = self.client.get_asset_balance(config.symbol)
+		if Decimal(bal['free']) > Decimal(self.qtys["assetQty"]):
+			msg.append("Ejecutando Orden de compra")
+			self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
+			msg.append("Orden de compra ejecutada")
+			logger(self.logName, msg)
+		else:
+			msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
+			logger(self.logName,msg)
 	def openOCO(self):
 		msg = []
-		balance = self.client.get_account()["balances"]
-		for bal in balance:
-			if bal["asset"] == self.pair.strip(config.symbol):
-				msg.append("Emplazando Orden OCO")
-				qty = f"{Decimal(bal['free']):{self.data['precision']}}"
-				client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
-					quantity=qty,
-					stopPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
-					price=f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
-					stopLimitPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
-				msg.append("OCO emplazada")
-				logger(self.logName,msg)
+		bal = self.client.get_asset_balance(self.pair.strip(config.symbol))
+		msg.append("Emplazando Orden OCO")
+		qty = f"{Decimal(bal['free']):{self.data['precision']}}"
+		msg = ["OCO DATA",
+			f"stopPrice: {((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}",
+			f"Limit: {((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}",
+			f"realStop: {((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}"]
+		logger(self.logName, msg)
+		msg = []
+		client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+			quantity=qty,
+			stopPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
+			price=f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
+			stopLimitPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
+		msg.append("OCO emplazada")
+		logger(self.logName,msg)
 	def startingAnalisys(self):
 		"""[summary]
 		"""
@@ -230,12 +231,12 @@ class AT:
 				mesARR = ["-"*60,
 					self.pair+" MONITOR",
 					str(datetime.now()),
-					"DAY min/med/max: "+ f"{self.minDay:.15f}"+" / "+f"{self.medDay:.15f}"+" / "+f"{self.maxDay:.15f}",
-					"HOUR min/med/max: "+ f"{self.min1h:.15f}"+" / "+f"{self.med1h:.15f}"+" / "+f"{self.max1h:.15f}",
+					"DAY min/med/max: "+ f"{self.minDay:self.data['precision']}"+" / "+f"{self.medDay:self.data['precision']}"+" / "+f"{self.maxDay:self.data['precision']}",
+					"HOUR min/med/max: "+ f"{self.min1h:self.data['precision']}"+" / "+f"{self.med1h:self.data['precision']}"+" / "+f"{self.max1h:self.data['precision']}",
 					"Day/1h grow: "+ str(self.growDay)+"% / "+str(self.grow1hTOT)+"%",
-					"Entrada:"+f"{act:.15f}",
-					"Limit: "+f"{((act/100)*self.limitPrice):.15f}",
-					"Stop: "+f"{((act/100)*self.stopPrice):.15f}"]
+					"Entrada:"+f"{act:self.data['precision']}",
+					"Limit: "+f"{((act/100)*self.limitPrice):self.data['precision']}",
+					"Stop: "+f"{((act/100)*self.stopPrice):self.data['precision']}"]
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				logger(self.logName, mesARR)
@@ -246,12 +247,12 @@ class AT:
 				'''mesARR = ["-"*60,
 					self.pair+" MONITOR",
 					str(datetime.now()),
-					"DAY min/med/max: "+ f"{self.minDay:.15f}"+" / "+f"{self.medDay:.15f}"+" / "+f"{self.maxDay:.15f}",
-					"HOUR min/med/max: "+ f"{self.min1h:.15f}"+" / "+f"{self.med1h:.15f}"+" / "+f"{self.max1h:.15f}",
+					"DAY min/med/max: "+ f"{self.minDay:self.data['precision']}"+" / "+f"{self.medDay:self.data['precision']}"+" / "+f"{self.maxDay:self.data['precision']}",
+					"HOUR min/med/max: "+ f"{self.min1h:self.data['precision']}"+" / "+f"{self.med1h:self.data['precision']}"+" / "+f"{self.max1h:self.data['precision']}",
 					"Day/1h grow: "+ str(self.growDay)+"% / "+str(self.grow1hTOT)+"%",
-					"Entrada:"+f"{act:.15f}",
-					"Limit: "+f"{((act/100)*self.limitPrice):.15f}",
-					"Stop: "+f"{((act/100)*self.stopPrice):.15f}"]
+					"Entrada:"+f"{act:self.data['precision']}",
+					"Limit: "+f"{((act/100)*self.limitPrice):self.data['precision']}",
+					"Stop: "+f"{((act/100)*self.stopPrice):self.data['precision']}"]
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				for line in mesARR:

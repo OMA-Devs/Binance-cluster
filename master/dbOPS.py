@@ -140,7 +140,7 @@ class DB:
 		startTS = cur.fetchall()[0][0]
 		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"'")
 		db.commit()
-		cur.execute("INSERT INTO traded VALUES('"+sym+"','"+f"{buyP:.15f}"+"','"+f"{sellP:.15f}"+"','"+str(startTS)+"','"+str(endTS)+"')")
+		cur.execute("INSERT INTO traded VALUES('"+sym+"','"+f"{buyP:self.data['precision']}"+"','"+f"{sellP:self.data['precision']}"+"','"+str(startTS)+"','"+str(endTS)+"')")
 		db.commit()
 		db.close()
 	def tradeSTART(self, sym, startTS):
