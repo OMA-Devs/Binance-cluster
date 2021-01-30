@@ -2,7 +2,6 @@
 
 import os
 from binance.client import Client
-from dbOPS import DB
 from sys import argv
 from decimal import Decimal
 
@@ -11,10 +10,6 @@ api_sec = os.environ.get("TEST_BINANCE_SEC")
 real_api_key = os.environ.get("BINANCE_API_KEY")
 real_api_sec = os.environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
-
-db = DB("binance.db", client)
-assets = db.getTRADEABLE(argv[1])
-print(assets)
 
 '''trades = client.get_my_trades(symbol="XVSBNB")
 orders = client.get_all_orders(symbol = "XVSBNB")

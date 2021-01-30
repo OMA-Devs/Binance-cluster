@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 
 <html lang="en">
@@ -7,10 +8,7 @@
   <title>Trading Management (Alpha)</title>
   <meta name="description" content="Trading Management">
   <meta name="author" content="Oma-Devs">
-
-  <link rel="stylesheet" href="../assets/w3.css">
-  <script src="../assets/plotly-latest.min.js"></script>
-  <script src="core.js"></script>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 </head>
 
 <body class="w3-container">
@@ -23,9 +21,7 @@
 	<p class="w3-bar-item w3-button w3-mobile">Section</p>
 	<p class="w3-bar-item w3-button w3-mobile">Section</p>
 </div>
-<h1 class="w3-button" onclick='genericCall(["sym"],["ETH"],"getSym.php","PARES")'>PRUEBA ETH</h1>
-<h1 class="w3-button" onclick='genericCall(["sym"],["BNB"],"getSym.php","PARES")'>PRUEBA BNB</h1>
-<h1 class="w3-button" onclick='genericCall(["sym"],["BTCEUR"],"getGraph.php","PARES")'>PRUEBA Grafico</h1>
-<div id="PARES"></div>
+{% block content %}
+{% endblock %}
 </body>
 </html>

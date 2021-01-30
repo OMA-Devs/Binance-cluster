@@ -25,7 +25,7 @@ def logger(logName, mesARR):
 
 def getTradeable():
 	payload= {"sym": config.symbol}
-	r = requests.get('http://'+config.masterIP+config.masterPATH+'/getSym.php', params=payload)
+	r = requests.get('http://'+config.masterIP+'/data/getTradeable?', params=payload)
 	text = r.text
 	try:
 		final = literal_eval(text)
