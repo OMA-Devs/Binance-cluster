@@ -14,6 +14,7 @@ api_sec = environ.get("TEST_BINANCE_SEC")
 real_api_key = environ.get("BINANCE_API_KEY")
 real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
+debug = True
 
 def logger(logName, mesARR):
 	f = open("logs/"+logName+".log", "a+")
@@ -166,7 +167,10 @@ class AT:
 		bal = self.client.get_asset_balance(config.symbol)
 		if Decimal(bal['free']) > Decimal(self.qtys["assetQty"]):
 			msg.append("Ejecutando Orden de compra")
-			self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
+			if debug == False:
+				self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
+			else:
+				pass
 			msg.append("Orden de compra ejecutada")
 			logger(self.logName, msg)
 		else:
@@ -183,11 +187,14 @@ class AT:
 			f"realStop: {((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}"]
 		logger(self.logName, msg)
 		msg = []
-		client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
-			quantity=qty,
-			stopPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
-			price=f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
-			stopLimitPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
+		if debug == False:
+			client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+				quantity=qty,
+				stopPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
+				price=f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
+				stopLimitPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
+		else:
+			pass
 		msg.append("OCO emplazada")
 		logger(self.logName,msg)
 	def startingAnalisys(self):
@@ -231,12 +238,12 @@ class AT:
 				mesARR = ["-"*60,
 					self.pair+" MONITOR",
 					str(datetime.now()),
-					"DAY min/med/max: "+ f"{self.minDay:self.data['precision']}"+" / "+f"{self.medDay:self.data['precision']}"+" / "+f"{self.maxDay:self.data['precision']}",
-					"HOUR min/med/max: "+ f"{self.min1h:self.data['precision']}"+" / "+f"{self.med1h:self.data['precision']}"+" / "+f"{self.max1h:self.data['precision']}",
+					"DAY min/med/max: "+ f"{self.minDay:{self.data['precision']}}"+" / "+f"{self.medDay:{self.data['precision']}}"+" / "+f"{self.maxDay:{self.data['precision']}}",
+					"HOUR min/med/max: "+ f"{self.min1h:{self.data['precision']}}"+" / "+f"{self.med1h:{self.data['precision']}}"+" / "+f"{self.max1h:{self.data['precision']}}",
 					"Day/1h grow: "+ str(self.growDay)+"% / "+str(self.grow1hTOT)+"%",
-					"Entrada:"+f"{act:self.data['precision']}",
-					"Limit: "+f"{((act/100)*self.limitPrice):self.data['precision']}",
-					"Stop: "+f"{((act/100)*self.stopPrice):self.data['precision']}"]
+					"Entrada:"+f"{act:{self.data['precision']}}",
+					"Limit: "+f"{((act/100)*self.limitPrice):{self.data['precision']}}",
+					"Stop: "+f"{((act/100)*self.stopPrice):{self.data['precision']}}"]
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				logger(self.logName, mesARR)
@@ -244,19 +251,6 @@ class AT:
 			else:
 				self.monitor = False
 				print(self.pair+"- STAGE 2- NO Cualifica")
-				'''mesARR = ["-"*60,
-					self.pair+" MONITOR",
-					str(datetime.now()),
-					"DAY min/med/max: "+ f"{self.minDay:self.data['precision']}"+" / "+f"{self.medDay:self.data['precision']}"+" / "+f"{self.maxDay:self.data['precision']}",
-					"HOUR min/med/max: "+ f"{self.min1h:self.data['precision']}"+" / "+f"{self.med1h:self.data['precision']}"+" / "+f"{self.max1h:self.data['precision']}",
-					"Day/1h grow: "+ str(self.growDay)+"% / "+str(self.grow1hTOT)+"%",
-					"Entrada:"+f"{act:self.data['precision']}",
-					"Limit: "+f"{((act/100)*self.limitPrice):self.data['precision']}",
-					"Stop: "+f"{((act/100)*self.stopPrice):self.data['precision']}"]
-				for line in self.grow1h[-3:]:
-					mesARR.append("--: "+str(line)+"%")
-				for line in mesARR:
-					print(line)'''
 	def __init__(self, client, pair, dayKline):
 		"""[summary]
 

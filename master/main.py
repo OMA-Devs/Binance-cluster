@@ -16,7 +16,8 @@ db = DB("binance.db", client)
 assets = db.getTRADEABLE(argv[1])
 print(assets)
 
-'''orders = client.get_my_trades(symbol="XVSBNB")
+'''trades = client.get_my_trades(symbol="XVSBNB")
+orders = client.get_all_orders(symbol = "XVSBNB")
 price = Decimal(client.get_symbol_ticker(symbol="BNBEUR")["price"]) 
 print(orders[0]["symbol"])
 buyBASE = 0
@@ -25,10 +26,28 @@ buy = ""
 sell = ""
 qty = 0
 comision = 0
+print("ORDERS")
 for o in orders:
 	print(o)
 	print("\n")
-if o["isBuyer"] == True:
+print("-"*30)
+print("TRADES")
+for t in trades:
+	print(t)
+print("-"*30)
+
+lastMarketOrderID = 0
+for o in orders:
+	if o["type"] =="MARKET":
+		lastMarketOrderID = o["orderId"]
+		break
+tradesInOrder =[]
+for t in trades:
+	if t["orderId"] == lastMarketOrderID:
+		tradesInOrder.append(t)
+		print(tradesInOrder)'''
+
+'''if o["isBuyer"] == True:
 		qty = o["qty"]
 		comision = comision + Decimal(o["commission"])
 		buyBASE = o["quoteQty"]
