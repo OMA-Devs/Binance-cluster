@@ -1,0 +1,33 @@
+https://docs.djangoproject.com/en/3.1/howto/deployment/wsgi/modwsgi/
+https://www.digitalocean.com/community/tutorials/como-configurar-virtual-hosts-de-apache-en-ubuntu-16-04-es
+http://blog.enriqueoriol.com/2014/06/lanzando-django-en-produccion-con.html
+
+pip3 install django
+sudo apt-get install libapache2-mod-wsgi-py3
+Crear proyecto Django
+Crear vhost en /etc/apache2/sites-avaible/*nombre.conf
+
+<VirtualHost *:80>
+        ServerName djangoTest
+        ServerAlias localhost
+        ServerAdmin email@deladministrador.com
+        LogLevel warn
+        DocumentRoot /var/www/html/djangoTest
+        WSGIPassAuthorization On
+        WSGIScriptAlias / /var/www/html/djangoTest/misitio/misitio/wsgi.py
+        #Cabe destacar que usamos el path a python de nuestro virtualenv
+        WSGIDaemonProcess djangoTest python-path=/usr/lib/python3/dist-packages
+        WSGIProcessGroup djangoTest
+        #En el errorlog podremos encontrar los errores del servidor de apps
+        ErrorLog "/var/log/apache2/error.log"
+        CustomLog "/var/log/apache2/djangoTest" common
+</VirtualHost>
+
+sudo a2dissite 000-default.conf
+sudo a2ensite *nombrevhost.conf
+sudo systemctl restart apache2.service
+
+Modificar /etc/hosts si corresponde
+Añadir host en ALLOWED_HOST, settings.py (Django)
+Añadir path en wsgi.py (Django)
+

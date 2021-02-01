@@ -2,6 +2,7 @@
 
 import sqlite3
 from binance.client import Client
+from datetime import datetime
 
 class DB:
 	"""Clase que engloba todas las operaciones de base de datos. Se ha hecho necesaria ya que la modularización del programa está causando
@@ -90,6 +91,20 @@ class DB:
 		monitored = []
 		for i in symList:
 			monitored.append(i[0])
+		return monitored
+	def getTRADINGdict(self):
+		"""Obtiene los simbolos en trading activo.
+		Returns:
+			List: Lista de simbolos en trading activo.
+		"""
+		db = sqlite3.connect(self.name, timeout=30)
+		cur = db.cursor()
+		cur.execute("SELECT symbol, startTS FROM trading")
+		symList = cur.fetchall()
+		monitored = []
+		for i in symList:
+			d = {"sym": i[0], "startTS": datetime.fromtimestamp(int(i[1].split(".")[0]))}
+			monitored.append(d) 
 		return monitored
 	def getTRADINGsingle(self, sym):
 		"""TESTING

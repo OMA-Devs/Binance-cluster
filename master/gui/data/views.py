@@ -60,3 +60,9 @@ def putTrading(request):
 	except OperationalError:
 		return HttpResponse(str(False))
 
+def viewTrading(request):
+	db = DB(dbName,client)
+	a = db.getTRADINGdict()
+	d = {"syms": a}
+	return render(request, "trading.html", d)
+

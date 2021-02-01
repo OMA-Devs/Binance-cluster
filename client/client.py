@@ -34,6 +34,16 @@ def getTradeable():
 		print("Sin respuesta de masterNode. Solicitando de nuevo.")
 		return []
 
+def putTrading(sym):
+	ts = str(datetime.timestamp(datetime.now()))
+	payload = {"sym": sym, "startTS": ts}
+	r = requests.get("http://"+config.masterIP+"/data/putTrading?",params= payload)
+	response = r.text
+	if literal_eval(response) == True:
+		print("Trade enviado a masterNode")
+	else:
+		print("Trade no recibido en masterNode")
+
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
 	y, si cumplen los parametros, ejecuta la funcion Trader en un proceso externo.
@@ -173,12 +183,16 @@ class AT:
 				pass
 			msg.append("Orden de compra ejecutada")
 			logger(self.logName, msg)
+			putTrading(self.pair)
 		else:
 			msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
 			logger(self.logName,msg)
 	def openOCO(self):
 		msg = []
 		bal = self.client.get_asset_balance(self.pair.strip(config.symbol))
+		while bal == None:
+			print("API no entrega respuesta de balance")
+			bal = self.client.get_asset_balance(self.pair.strip(config.symbol))
 		msg.append("Emplazando Orden OCO")
 		qty = f"{Decimal(bal['free']):{self.data['precision']}}"
 		msg = ["OCO DATA",
