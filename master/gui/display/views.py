@@ -41,6 +41,9 @@ def Graph(request):
 				high=df['High'],
 				low=df['Low'],
 				close=df['Close'])])
-	div = plot(fig, output_type="div", include_plotlyjs=False)
+	div = plot(fig, output_type="div",
+				include_plotlyjs=False,
+				config={"displayModeBar": False,
+						"autosizable": True})
 	d = {"sym": sym, "graph": div}
 	return render(request, "graphView.html", d)
