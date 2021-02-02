@@ -55,7 +55,11 @@ def putTrading(request):
 	symbol = request.GET["sym"]
 	startTS = request.GET["startTS"]
 	db.tradeSTART(symbol,startTS)
-	return HttpResponse(str(True))
+	try:
+		return HttpResponse(str(True))
+	except OperationalError:
+		####COMPRUEBA LOS PERMISOS DE LA BASE DE DATOS!!!!
+		return HttpResponse(str(False))
 
 def viewTrading(request):
 	db = DB(dbName,client)
