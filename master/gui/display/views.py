@@ -24,7 +24,7 @@ def Trading(request):
 
 def Graph(request):
 	sym = request.GET["sym"]
-	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
+	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1HOUR, "1 day ago UTC")
 	df = {"Date":[],
 		"Open": [],
 		"High": [],
