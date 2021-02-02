@@ -189,10 +189,7 @@ class AT:
 			logger(self.logName,msg)
 	def openOCO(self):
 		msg = []
-		bal = self.client.get_asset_balance(self.pair.strip(config.symbol))
-		while bal == None:
-			print("API no entrega respuesta de balance "+ self.pair.strip(config.symbol))
-			bal = self.client.get_asset_balance(self.pair.strip(config.symbol))
+		bal = self.client.get_asset_balance(self.pair.replace(config.symbol,""))
 		msg.append("Emplazando Orden OCO")
 		qty = f"{Decimal(bal['free']):{self.data['precision']}}"
 		msg = ["OCO DATA",
