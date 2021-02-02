@@ -32,6 +32,7 @@ ALLOWED_HOSTS = ["localhost","192.168.1.62", "192.168.1.41"]
 
 INSTALLED_APPS = [
     "data.apps.DataConfig",
+    "display.apps.DisplayConfig",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

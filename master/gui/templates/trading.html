@@ -3,11 +3,11 @@
 
 {% block content %}
 <table class="w3-table-all">
-<th>PAR</th>
-<th>INICIO</th>
+<th class="w3-center">PAR</th>
+<th class="w3-center">INICIO</th>
 {% for row in syms %}
-<tr>
-	<td><a href="{% url 'viewGraph' %}?sym={{row.sym}}">{{row.sym}}</a></td>
+<tr class="w3-center">
+	<td><a href="{% url 'Graph' %}?sym={{row.sym}}">{{row.sym}}</a></td>
 	<td>{{row.startTS}}</td>
 </tr>
 {% endfor %}

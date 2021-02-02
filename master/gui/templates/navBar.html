@@ -12,14 +12,13 @@
 </head>
 
 <body class="w3-container">
-<div class="w3-container"> 
-	<h1 class="w3-center">Trading Management</h1>
-</div>
-<div class="w3-bar">
-	<p class="w3-bar-item w3-button w3-mobile">Trading</p>
-	<p class="w3-bar-item w3-button w3-mobile">Traded</p>
-	<p class="w3-bar-item w3-button w3-mobile">Section</p>
-	<p class="w3-bar-item w3-button w3-mobile">Section</p>
+<div class="w3-container w3-center"> 
+	<h1>Trading Management</h1>
+	<div class="w3-bar w3-center">
+		<a class="w3-bar-item w3-button" href="{% url 'Trading' %}">Trading</a>
+		<a class="w3-bar-item w3-button">Traded</a>
+		<a class="w3-bar-item w3-button">Options</a>
+	</div>
 </div>
 {% block content %}
 {% endblock %}
