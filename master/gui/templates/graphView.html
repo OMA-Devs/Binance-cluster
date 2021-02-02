@@ -2,7 +2,20 @@
 
 
 {% block content %}
-<h1>{{sym}}</h1>
-{{graph|safe}}
-
+<h1 class="w3-center">{{sym}}</h1>
+<div class="w3-cell-row">
+	<div class="w3-cell">
+		<h2 class="w3-center">Eval. Data</h2>
+		<p>evalPrice:</p>
+		<p>Day MIN/AVG/MAX</p>
+		<p>Hour MIN/AVG/MAX</p>
+		<h2 class="w3-center">Market Order</h2>
+		<p>buyPrice:</p>
+		<p>qty:</p>
+		<h2>OCO Order</h2>
+		<p>limitPrice:</p>
+		<p>stopPrice:</p>
+	</div>
+	<div class="w3-cell">{{graph|safe}}</div>
+</div>
 {% endblock %}
