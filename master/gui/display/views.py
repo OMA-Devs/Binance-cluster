@@ -24,7 +24,7 @@ def Trading(request):
 
 def Graph(request):
 	sym = request.GET["sym"]
-	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1HOUR, "1 day ago UTC")
+	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
 	df = {"Date":[],
 		"Open": [],
 		"High": [],
@@ -41,6 +41,6 @@ def Graph(request):
 				high=df['High'],
 				low=df['Low'],
 				close=df['Close'])])
-	div = plot(fig, output_type="div")
+	div = plot(fig, output_type="div", include_plotlyjs=False)
 	d = {"sym": sym, "graph": div}
 	return render(request, "graphView.html", d)
