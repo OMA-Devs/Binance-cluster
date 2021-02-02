@@ -41,6 +41,10 @@ def Graph(request):
 				high=df['High'],
 				low=df['Low'],
 				close=df['Close'])])
+	fig.update_layout(
+		autosize=True,
+		width=500,
+		height=1200)
 	div = plot(fig, output_type="div",
 				include_plotlyjs=False,
 				config={"displayModeBar": False,
