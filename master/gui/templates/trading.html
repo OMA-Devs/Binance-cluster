@@ -2,10 +2,12 @@
 
 
 {% block content %}
-<table>
+<table class="w3-table-all">
+<th>PAR</th>
+<th>INICIO</th>
 {% for row in syms %}
 <tr>
-	<td>{{row.sym}}</td>
+	<td><a href="{% url 'viewGraph' %}?sym={{row.sym}}">{{row.sym}}</a></td>
 	<td>{{row.startTS}}</td>
 </tr>
 {% endfor %}

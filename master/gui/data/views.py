@@ -67,3 +67,25 @@ def viewTrading(request):
 	d = {"syms": a}
 	return render(request, "trading.html", d)
 
+def viewGraph(request):
+	sym = request.GET["sym"]
+	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1HOUR, "1 day ago UTC")
+	df = {"Date":[],
+		"Open": [],
+		"High": [],
+		"Low": [],
+		"Close": []}
+	for line in kline:
+		df["Date"].append(datetime.fromtimestamp(line[0]/1000))
+		df["Open"].append(line[1])
+		df["High"].append(line[2])
+		df["Low"].append(line[3])
+		df["Close"].append(line[4])
+	fig = go.Figure(data=[go.Candlestick(x=df['Date'],
+				open=df['Open'],
+				high=df['High'],
+				low=df['Low'],
+				close=df['Close'])])
+	div = plot(fig, output_type="div")
+	d = {"sym": sym, "graph": div}
+	return render(request, "graphView.html", d)
