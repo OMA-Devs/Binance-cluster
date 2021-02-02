@@ -88,6 +88,7 @@ class DB:
 		cur = db.cursor()
 		cur.execute("SELECT symbol FROM trading")
 		symList = cur.fetchall()
+		db.close()
 		monitored = []
 		for i in symList:
 			monitored.append(i[0])
@@ -101,6 +102,7 @@ class DB:
 		cur = db.cursor()
 		cur.execute("SELECT symbol, startTS FROM trading")
 		symList = cur.fetchall()
+		db.close()
 		monitored = []
 		for i in symList:
 			d = {"sym": i[0], "startTS": datetime.fromtimestamp(int(i[1].split(".")[0]))}

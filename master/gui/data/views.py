@@ -54,11 +54,8 @@ def putTrading(request):
 	db = DB(dbName, client)
 	symbol = request.GET["sym"]
 	startTS = request.GET["startTS"]
-	try:
-		db.tradeSTART(symbol,startTS)
-		return HttpResponse(str(True))
-	except OperationalError:
-		return HttpResponse(str(False))
+	db.tradeSTART(symbol,startTS)
+	return HttpResponse(str(True))
 
 def viewTrading(request):
 	db = DB(dbName,client)
