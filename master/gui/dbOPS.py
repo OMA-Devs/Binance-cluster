@@ -100,16 +100,22 @@ class DB:
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT symbol, startTS FROM trading")
+		cur.execute("SELECT * FROM trading")
 		symList = cur.fetchall()
 		db.close()
 		monitored = []
 		for i in symList:
-			d = {"sym": i[0], "startTS": datetime.fromtimestamp(int(i[1].split(".")[0]))}
+			d = {"symbol": i[0],
+				"evalTS": datetime.fromtimestamp(int(i[1].split(".")[0])),
+				"dayMAM": i[2],
+				"hourMAM": i[3],
+				"evalPrice": i[4],
+				"stop": i[5],
+				"limit": i[6]}
 			monitored.append(d) 
 		return monitored
 	def getTRADINGsingle(self, sym):
-		"""TESTING
+		"""Funcion rapida para chequear si el simbolo esta en trading activo. Se utiliza en DB.getTRADEABLE
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
@@ -160,7 +166,7 @@ class DB:
 		cur.execute("INSERT INTO traded VALUES('"+sym+"','"+f"{buyP:self.data['precision']}"+"','"+f"{sellP:self.data['precision']}"+"','"+str(startTS)+"','"+str(endTS)+"')")
 		db.commit()
 		db.close()
-	def tradeSTART(self, sym, startTS):
+	def tradeSTART(self, sym, evalTS, dayMAM, hourMAM, evalPrice, stop, limit):
 		"""Introduce el par en la tabla TRADING
 		Args:
 			sym (String): Par del trade
@@ -168,7 +174,7 @@ class DB:
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("INSERT INTO trading VALUES('"+sym+"','"+str(startTS)+"')")
+		cur.execute("INSERT INTO trading VALUES('"+sym+"','"+str(evalTS)+"','"+dayMAM+"','"+hourMAM+"','"+evalPrice+"','"+stop+"','"+limit+"')")
 		db.commit()
 		db.close()
 	def removeTrade(self, sym):
@@ -185,5 +191,5 @@ if __name__ == "__main__":
 	real_api_key = environ.get("BINANCE_API_KEY")
 	real_api_sec = environ.get("BINANCE_API_SEC")
 	client = Client(real_api_key,real_api_sec)
-	db = DB("binance.db", client)
+	db = DB("../binance.db", client)
 	db.updateSymbols()

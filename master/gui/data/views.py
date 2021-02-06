@@ -26,8 +26,13 @@ def getTradeable(request):
 def putTrading(request):
 	db = DB(dbName, client)
 	symbol = request.GET["sym"]
-	startTS = request.GET["startTS"]
-	db.tradeSTART(symbol,startTS)
+	evalTS = request.GET["evalTS"]
+	dayMAM = request.GET["dayMAM"]
+	hourMAM = request.GET["hourMAM"]
+	evalPrice = request.GET["evalPrice"]
+	stop = request.GET["stop"]
+	limit = request.GET["limit"]
+	db.tradeSTART(symbol,evalTS, dayMAM, hourMAM, evalPrice, stop, limit)
 	try:
 		return HttpResponse(str(True))
 	except OperationalError:

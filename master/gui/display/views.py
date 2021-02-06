@@ -43,11 +43,17 @@ def Graph(request):
 				close=df['Close'])])
 	fig.update_layout(
 		autosize=True,
-		width=500,
+		width=800,
 		height=1200)
 	div = plot(fig, output_type="div",
 				include_plotlyjs=False,
 				config={"displayModeBar": False,
 						"autosizable": True})
-	d = {"sym": sym, "graph": div}
+	db = DB(dbName,client)
+	syms = db.getTRADINGdict()
+	symDATA = None
+	for i in syms:
+		if i["symbol"] == sym:
+			symDATA = i
+	d = {"sym": sym, "graph": div, "data": symDATA}
 	return render(request, "graphView.html", d)

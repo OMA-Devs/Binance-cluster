@@ -7,8 +7,8 @@
 <th class="w3-center">INICIO</th>
 {% for row in syms %}
 <tr class="w3-center">
-	<td><a href="{% url 'Graph' %}?sym={{row.sym}}">{{row.sym}}</a></td>
-	<td>{{row.startTS}}</td>
+	<td class="w3-center"><a href="{% url 'Graph' %}?sym={{row.symbol}}">{{row.symbol}}</a></td>
+	<td class="w3-center">{{row.evalTS}}</td>
 </tr>
 {% endfor %}
 </table>

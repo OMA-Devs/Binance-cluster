@@ -34,9 +34,17 @@ def getTradeable():
 		print("Sin respuesta de masterNode. Solicitando de nuevo.")
 		return []
 
-def putTrading(sym):
+def putTrading(sym, dayStats, hourStats, prices):
+	daySTR = "|".join(dayStats)
+	hourSTR = "|".join(hourStats)
 	ts = str(datetime.timestamp(datetime.now()))
-	payload = {"sym": sym, "startTS": ts}
+	payload = {"sym": sym,
+				"evalTS": ts,
+				"dayMAM": daySTR,
+				"hourMAM": hourSTR,
+				"evalPrice": prices[0],
+				"stop": prices[1],
+				"limit": prices[2]}
 	r = requests.get("http://"+config.masterIP+"/data/putTrading?",params= payload)
 	response = r.text
 	if literal_eval(response) == True:
@@ -183,7 +191,16 @@ class AT:
 				pass
 			msg.append("Orden de compra ejecutada")
 			logger(self.logName, msg)
-			putTrading(self.pair)
+			putTrading(self.pair,
+						[f"{self.minDay:{self.data['precision']}}",
+							f"{self.medDay:{self.data['precision']}}",
+							f"{self.maxDay:{self.data['precision']}}"],
+						[f"{self.min1h:{self.data['precision']}}",
+							f"{self.med1h:{self.data['precision']}}",
+							f"{self.max1h:{self.data['precision']}}"],
+						[f"{self.qtys['evalPrice']:{self.data['precision']}}",
+							f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}",
+							f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}"])
 		else:
 			msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
 			logger(self.logName,msg)
@@ -238,9 +255,9 @@ class AT:
 			self.monitor = False
 		############################################################################
 		###################STAGE 2#################################################
-		if self.monitor == True:
+		if self.monitor == True or self.force == True:
 			act = Decimal(self.client.get_symbol_ticker(symbol= self.pair)["price"])
-			if (act/100)*self.limitPrice < self.maxDay and act <= (self.medDay/100)*self.limitPrice:
+			if ((act/100)*self.limitPrice < self.maxDay and act <= (self.medDay/100)*self.limitPrice) or self.force == True:
 				print(self.pair+"- STAGE 2- Cualifica")
 				self.logName = self.pair+"-"+str(datetime.now().date())
 				self.qtys["evalPrice"] = act
@@ -262,7 +279,7 @@ class AT:
 			else:
 				self.monitor = False
 				print(self.pair+"- STAGE 2- NO Cualifica")
-	def __init__(self, client, pair, dayKline):
+	def __init__(self, client, pair, dayKline, force=False):
 		"""[summary]
 
 		Args:
@@ -270,42 +287,39 @@ class AT:
 			pair (DICT): Diccionario con el simbolo y reglas de trading relacionadas.
 			dayKline(LIST): Kline de 24h minuto a minuto.
 		"""
-		if len(dayKline) > 0:
-			#print("NOT IN TRADING")
-			self.client = client
-			self.data = pair
-			self.data["minNotional"] = Decimal(self.data["minNotional"])
-			self.data["minQty"] = Decimal(self.data["minQty"])
-			self.data["stepSize"] = Decimal(self.data["stepSize"])
-			self.data["precision"] = "."+self.data["precision"]+"f"
-			self.pair = self.data["symbol"]
-			self.dayKline = dayKline #kline de la ultima hora, minuto a minuto.
-			self.minDay = 0 #Precio minimo del dia
-			self.maxDay = 0 #Precio maximo del dia
-			self.medDay = 0 #Precio medio del dia
-			self.min1h = 0 #Precio minimo 1h
-			self.max1h = 0 #Precio maximo 1h
-			self.med1h = 0 #Precio medio 1h
-			self.growDay = 0 #Crecimiento (en porcentaje) del día
-			self.grow1hTOT = self._getPercentage(self.dayKline[-60:]) #Crecimiento (en porcentaje) de una hora en total
-			self.grow1h = [] #Crecimiento (en porcentaje) de la ultima hora, minuto a minuto.
-			self.monitorPERC = 1 #Porcentaje en el que si inician las operaciones y el monitoreo
-			self.maxINV = 20 #Inversion maxima en EUR. Se considerara cantidad minima segun las reglas de trading.
-			self.monitor = False
-			self.limitPrice = 105 # Porcentaje maximo para salir de la posicion.
-			self.stopPrice = 95 # Porcentaje minimo para vender.
-			self.setHour()
-			self.setDay()
-			self.logName = ""
-			self.qtys = {"baseQty":"",
-						"eurQty": "",
-						"assetQty":"",
-						"evalPrice": ""}
-			#self.setLimits()
-			self.startingAnalisys()
-		else:
-			self.monitor = False
-
+		#print("NOT IN TRADING")
+		self.client = client
+		self.data = pair
+		self.data["minNotional"] = Decimal(self.data["minNotional"])
+		self.data["minQty"] = Decimal(self.data["minQty"])
+		self.data["stepSize"] = Decimal(self.data["stepSize"])
+		self.data["precision"] = "."+self.data["precision"]+"f"
+		self.pair = self.data["symbol"]
+		self.dayKline = dayKline #kline de la ultima hora, minuto a minuto.
+		self.minDay = 0 #Precio minimo del dia
+		self.maxDay = 0 #Precio maximo del dia
+		self.medDay = 0 #Precio medio del dia
+		self.min1h = 0 #Precio minimo 1h
+		self.max1h = 0 #Precio maximo 1h
+		self.med1h = 0 #Precio medio 1h
+		self.growDay = 0 #Crecimiento (en porcentaje) del día
+		self.grow1hTOT = self._getPercentage(self.dayKline[-60:]) #Crecimiento (en porcentaje) de una hora en total
+		self.grow1h = [] #Crecimiento (en porcentaje) de la ultima hora, minuto a minuto.
+		self.monitorPERC = 1 #Porcentaje en el que si inician las operaciones y el monitoreo
+		self.maxINV = 20 #Inversion maxima en EUR. Se considerara cantidad minima segun las reglas de trading.
+		self.force = force
+		self.monitor = False
+		self.limitPrice = 105 # Porcentaje maximo para salir de la posicion.
+		self.stopPrice = 95 # Porcentaje minimo para vender.
+		self.setHour()
+		self.setDay()
+		self.logName = ""
+		self.qtys = {"baseQty":"",
+					"eurQty": "",
+					"assetQty":"",
+					"evalPrice": ""}
+		#self.setLimits()
+		self.startingAnalisys()
 
 
 if __name__ == "__main__":
@@ -316,7 +330,8 @@ if __name__ == "__main__":
 			for sym in tradeable:
 				#print(sym)
 				kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
-				a = AT(client, sym, kline)
+				if len(kline) > 0:
+					a = AT(client, sym, kline)
 		except (requests.exceptions.ConnectionError,
 				requests.exceptions.ConnectTimeout,
 				requests.exceptions.HTTPError,
