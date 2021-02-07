@@ -369,9 +369,10 @@ if __name__ == "__main__":
 				if j.is_alive() == False:
 					tradepool.pop(ind)
 			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
-			print("Trades Abiertos:")
-			for j in tradepool:
-				print("- "+ j.name)
+			if len(tradepool) > 0:
+				print("Trades Abiertos:")
+				for j in tradepool:
+					print("- "+ j.name)
 			for sym in tradeable:
 				#print(sym)
 				kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
