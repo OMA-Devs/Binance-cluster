@@ -38,3 +38,15 @@ def putTrading(request):
 	except OperationalError:
 		####COMPRUEBA LOS PERMISOS DE LA BASE DE DATOS!!!!
 		return HttpResponse(str(False))
+
+def putTraded(request):
+	db = DB(dbName, client)
+	symbol = request.GET["sym"]
+	endTS = request.GET["endTS"]
+	sellPrice = request.GET["sellPrice"]
+	db.tradeEND(symbol,endTS, sellPrice)
+	try:
+		return HttpResponse(str(True))
+	except OperationalError:
+		####COMPRUEBA LOS PERMISOS DE LA BASE DE DATOS!!!!
+		return HttpResponse(str(False))

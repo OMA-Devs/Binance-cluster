@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import requests
-from os import environ
+from os import environ, system
+from sys import argv
 import config
 from binance.client import Client
 from binance.enums import SIDE_SELL, TIME_IN_FORCE_GTC
@@ -52,6 +53,51 @@ def putTrading(sym, dayStats, hourStats, prices):
 	else:
 		print("Trade no recibido en masterNode")
 
+def putTraded(sym, closePrice):
+	ts = str(datetime.timestamp(datetime.now()))
+	payload = {"sym": sym,
+				"endTS": ts,
+				"sellPrice": closePrice
+				}
+	r = requests.get("http://"+config.masterIP+"/data/putTraded?",params= payload)
+	response = r.text
+	if literal_eval(response) == True:
+		print("Trade enviado a masterNode")
+	else:
+		print("Trade no recibido en masterNode")
+
+def monitor(symbol, limit, stop, qty):
+	tick = timedelta(seconds=2)
+	limit = Decimal(limit)
+	stop = Decimal(stop)
+	tnow = datetime.now()
+	try:
+		while True:
+			if datetime.now() >= tnow+tick:
+				tnow = datetime.now()+tick
+				try:
+					act = Decimal(client.get_symbol_ticker(symbol=symbol))
+					if act >= limit or act <= stop:
+						if debug == False:
+							client.order_market_sell(symbol=symbol, quantity=qty)
+							putTraded(symbol, f"{act:.8f}")
+							break
+						else:
+							print("Trade cerrado")
+							putTraded(symbol, f"{act:.8f}")
+				except (requests.exceptions.ConnectionError,
+						requests.exceptions.ConnectTimeout,
+						requests.exceptions.HTTPError,
+						requests.exceptions.ReadTimeout,
+						requests.exceptions.RetryError):
+					print("Error, continuando con la peticion.")
+	except KeyboardInterrupt:
+		if debug == False:
+			client.order_market_sell(symbol=symbol, quantity=qty)
+			putTraded(symbol, f"{act:.8f}")
+		else:
+			print("Trade cerrado manualmente")
+			putTraded(symbol, f"{act:.8f}")
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
 	y, si cumplen los parametros, ejecuta la funcion Trader en un proceso externo.
@@ -204,27 +250,6 @@ class AT:
 		else:
 			msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
 			logger(self.logName,msg)
-	def openOCO(self):
-		msg = []
-		bal = self.client.get_asset_balance(self.pair.replace(config.symbol,""))
-		msg.append("Emplazando Orden OCO")
-		qty = f"{Decimal(bal['free']):{self.data['precision']}}"
-		msg = ["OCO DATA",
-			f"stopPrice: {((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}",
-			f"Limit: {((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}",
-			f"realStop: {((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}"]
-		logger(self.logName, msg)
-		msg = []
-		if debug == False:
-			client.create_oco_order(symbol=self.pair, side=SIDE_SELL, stopLimitTimeInForce=TIME_IN_FORCE_GTC,
-				quantity=qty,
-				stopPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}", #Activacion de la orden, precio menor que ACT
-				price=f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}", #Precio limite
-				stopLimitPrice=f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}") #Precio Stop
-		else:
-			pass
-		msg.append("OCO emplazada")
-		logger(self.logName,msg)
 	def startingAnalisys(self):
 		"""[summary]
 		"""
@@ -275,7 +300,6 @@ class AT:
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				logger(self.logName, mesARR)
-				self.openOCO()
 			else:
 				self.monitor = False
 				print(self.pair+"- STAGE 2- NO Cualifica")
@@ -320,21 +344,28 @@ class AT:
 					"evalPrice": ""}
 		#self.setLimits()
 		self.startingAnalisys()
+		if self.monitor == True:
+			launch = "x-terminal-emulator -e python3 "+argv[0]+" monitor "+self.pair+" "+str(self.limitPrice)+" "+str(self.stopPrice)+" "+str(self.qtys["baseQty"])
+			system(launch)
 
 
 if __name__ == "__main__":
-	while True:
-		try:
-			tradeable = getTradeable()
-			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
-			for sym in tradeable:
-				#print(sym)
-				kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
-				if len(kline) > 0:
-					a = AT(client, sym, kline)
-		except (requests.exceptions.ConnectionError,
-				requests.exceptions.ConnectTimeout,
-				requests.exceptions.HTTPError,
-				requests.exceptions.ReadTimeout,
-				requests.exceptions.RetryError):
-				print("Error, saltando a siguiente comprobacion")
+	try:
+		if argv[1] == "monitor":
+			monitor(argv[2],argv[3],argv[4],argv[5])
+	except IndexError:
+		while True:
+			try:
+				tradeable = getTradeable()
+				print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
+				for sym in tradeable:
+					#print(sym)
+					kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
+					if len(kline) > 0:
+						a = AT(client, sym, kline)
+			except (requests.exceptions.ConnectionError,
+					requests.exceptions.ConnectTimeout,
+					requests.exceptions.HTTPError,
+					requests.exceptions.ReadTimeout,
+					requests.exceptions.RetryError):
+					print("Error, saltando a siguiente comprobacion")

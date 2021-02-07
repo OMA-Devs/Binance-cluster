@@ -148,30 +148,28 @@ class DB:
 		cur.execute("SELECT * FROM traded")
 		symList= cur.fetchall()
 		return symList
-	def tradeEND(self, sym, buyP, sellP, endTS):
-		"""Transfiere un trade terminado de la tabla TRADING a TRADED.
-
-		Args:
-			sym (String): Par cuyo trade se cierra
-			buyP (Decimal): Precio de apertura
-			sellP (Decimal): Precio de cierre
-			endTS (String): Timestamp LOCAL de cierre 
-		"""
+	def tradeEND(self, sym, endTS, sellP):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT startTS FROM trading WHERE symbol = '"+sym+"'")
-		startTS = cur.fetchall()[0][0]
+		cur.execute("SELECT * FROM trading WHERE symbol = '"+sym+"'")
+		row = cur.fetchall()
+		'''sym, evalPrice, stop, limit, buy, sellP, evalTS, startTS, endTS'''
+		values = ["'"+sym+"'",
+			"'"+row[0][4]+"'",
+			"'"+row[0][5]+"'",
+			"'"+row[0][6]+"'",
+			"''",
+			"'"+sellP+"'",
+			"'"+row[0][1]+"'",
+			"''",
+			"'"+endTS+"'"]
+		query = ",".join(values)
 		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"'")
 		db.commit()
-		cur.execute("INSERT INTO traded VALUES('"+sym+"','"+f"{buyP:self.data['precision']}"+"','"+f"{sellP:self.data['precision']}"+"','"+str(startTS)+"','"+str(endTS)+"')")
+		cur.execute("INSERT INTO traded VALUES("+query+")")
 		db.commit()
 		db.close()
 	def tradeSTART(self, sym, evalTS, dayMAM, hourMAM, evalPrice, stop, limit):
-		"""Introduce el par en la tabla TRADING
-		Args:
-			sym (String): Par del trade
-			startTS (String): Timestamp LOCAL de apertura. Se proporciona y no se genera dentro de la función para evitar posibles derivas.
-		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
 		cur.execute("INSERT INTO trading VALUES('"+sym+"','"+str(evalTS)+"','"+dayMAM+"','"+hourMAM+"','"+evalPrice+"','"+stop+"','"+limit+"')")
