@@ -1,5 +1,7 @@
 client/config.py
 master/binance.db
-client/__pycache__/config.cpython-37.pyc
-client/__pycache__/client.cpython-37.pyc
 client/logs/
+client/__pycache__/
+master/gui/gui/__pycache__/
+master/gui/data/__pycache__/
+master/gui/display/__pycache__/

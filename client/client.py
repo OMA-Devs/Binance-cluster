@@ -9,6 +9,7 @@ from binance.enums import SIDE_SELL, TIME_IN_FORCE_GTC
 from datetime import datetime, timedelta
 from decimal import Decimal
 from ast import literal_eval
+import multiprocessing
 
 api_key = environ.get("TEST_BINANCE_API")
 api_sec = environ.get("TEST_BINANCE_SEC")
@@ -16,6 +17,8 @@ real_api_key = environ.get("BINANCE_API_KEY")
 real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
 debug = True
+
+tradepool = []
 
 def logger(logName, mesARR):
 	f = open("logs/"+logName+".log", "a+")
@@ -73,24 +76,27 @@ def monitor(symbol, limit, stop, qty):
 	tnow = datetime.now()
 	try:
 		while True:
-			if datetime.now() >= tnow+tick:
-				tnow = datetime.now()+tick
+			now = datetime.now()
+			if now >= tnow+tick:
+				tnow = now+tick
 				try:
 					act = Decimal(client.get_symbol_ticker(symbol=symbol))
+					print(f"{act}")
 					if act >= limit or act <= stop:
 						if debug == False:
 							client.order_market_sell(symbol=symbol, quantity=qty)
+							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
 							putTraded(symbol, f"{act:.8f}")
 							break
 						else:
-							print("Trade cerrado")
+							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
 							putTraded(symbol, f"{act:.8f}")
 				except (requests.exceptions.ConnectionError,
 						requests.exceptions.ConnectTimeout,
 						requests.exceptions.HTTPError,
 						requests.exceptions.ReadTimeout,
 						requests.exceptions.RetryError):
-					print("Error, continuando con la peticion.")
+					print("Error en peticion, continuando.")
 	except KeyboardInterrupt:
 		if debug == False:
 			client.order_market_sell(symbol=symbol, quantity=qty)
@@ -347,27 +353,33 @@ class AT:
 		#self.setLimits()
 		self.startingAnalisys()
 		if self.monitor == True:
-			launch = "x-terminal-emulator -e python3 "+argv[0]+" monitor "+self.pair+" "+str(self.limitPrice)+" "+str(self.stopPrice)+" "+str(self.qtys["baseQty"])
-			system(launch)
+			mon = multiprocessing.Process(target=monitor,
+										args=(self.pair,str(self.limitPrice),str(self.stopPrice),str(self.qtys["baseQty"]),),
+										name= self.pair)
+			mon.daemon = True
+			tradepool.append(mon)
+			mon.start()
 
 
 if __name__ == "__main__":
-	try:
-		if argv[1] == "monitor":
-			monitor(argv[2],argv[3],argv[4],argv[5])
-	except IndexError:
-		while True:
-			try:
-				tradeable = getTradeable()
-				print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
-				for sym in tradeable:
-					#print(sym)
-					kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
-					if len(kline) > 0:
-						a = AT(client, sym, kline)
-			except (requests.exceptions.ConnectionError,
-					requests.exceptions.ConnectTimeout,
-					requests.exceptions.HTTPError,
-					requests.exceptions.ReadTimeout,
-					requests.exceptions.RetryError):
-					print("Error, saltando a siguiente comprobacion")
+	while True:
+		try:
+			tradeable = getTradeable()
+			for ind, j in enumerate(tradepool):
+				if j.is_alive() == False:
+					tradepool.pop(ind)
+			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
+			print("Trades Abiertos:")
+			for j in tradepool:
+				print("- "+ j.name)
+			for sym in tradeable:
+				#print(sym)
+				kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
+				if len(kline) > 0:
+					a = AT(client, sym, kline)
+		except (requests.exceptions.ConnectionError,
+				requests.exceptions.ConnectTimeout,
+				requests.exceptions.HTTPError,
+				requests.exceptions.ReadTimeout,
+				requests.exceptions.RetryError):
+			print("Error, saltando a siguiente comprobacion")
