@@ -221,7 +221,8 @@ class AT:
 						"Price:"+f"{act:{self.data['precision']}}",
 						"EUR TO TRADE: "+f"{qtyEUR:{self.data['precision']}}",
 						config.symbol+" TO TRADE: "+f"{notionalVALUE:{self.data['precision']}}",
-						"qty: "+f"{startQty:{self.data['precision']}}"]
+						"qty: "+f"{startQty:{self.data['precision']}}",
+						"-"*30]
 					logger(self.logName, msg)
 					break
 				else:
@@ -300,6 +301,7 @@ class AT:
 				for line in self.grow1h[-3:]:
 					mesARR.append("--: "+str(line)+"%")
 				logger(self.logName, mesARR)
+				self.monitor = True
 			else:
 				self.monitor = False
 				print(self.pair+"- STAGE 2- NO Cualifica")
