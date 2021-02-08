@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import requests
-from client import AT, getTradeable
+from clientNEW import AT, Checker, getTradeable
 from datetime import datetime, timedelta
 from binance.client import Client
 from os import environ
@@ -16,11 +16,11 @@ debug = True
 
 def TEST_putTrading():
 	syms = getTradeable()
-	for sym in syms:
-		kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "1 day ago UTC")
+	for i in range(5):
+		rnd = randint(0, len(syms))
+		kline = client.get_historical_klines(syms[rnd]["symbol"], Client.KLINE_INTERVAL_1MINUTE, "5 minutes ago UTC")
 		if len(kline) > 0 :
-			AT(client, sym, kline, force=True)
-			break
+			AT(client, syms[rnd], kline, force=True)
 
 def TEST_getAsset(asset):
 	print(client.get_asset_balance(asset))
@@ -63,17 +63,4 @@ def worker(num):
 				break
 	print(name+" Terminado")
 
-class AN:
-	def __init__(self, num):
-		self.num = num
-
-class SUB:
-	def __init__(self, an):
-		self.an = an
-	def func1(self):
-		print(self.an.num)
-
-a = AN(10)
-b = SUB(a)
-a.num = 20
-b.func1()
+TEST_putTrading()
