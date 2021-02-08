@@ -80,7 +80,7 @@ def monitor(symbol, limit, stop, qty):
 			if now >= tnow+tick:
 				tnow = now+tick
 				try:
-					act = Decimal(client.get_symbol_ticker(symbol=symbol))
+					act = Decimal(client.get_symbol_ticker(symbol=symbol)["price"])
 					print(f"{act}")
 					if act >= limit or act <= stop:
 						if debug == False:
