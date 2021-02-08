@@ -63,5 +63,17 @@ def worker(num):
 				break
 	print(name+" Terminado")
 
+class AN:
+	def __init__(self, num):
+		self.num = num
 
-main_loop()
+class SUB:
+	def __init__(self, an):
+		self.an = an
+	def func1(self):
+		print(self.an.num)
+
+a = AN(10)
+b = SUB(a)
+a.num = 20
+b.func1()

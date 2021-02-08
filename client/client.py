@@ -104,6 +104,45 @@ def monitor(symbol, limit, stop, qty):
 		else:
 			print("Trade cerrado manualmente")
 			putTraded(symbol, f"{act:.8f}")
+
+class Checker:
+	def __init__(self, at):
+		self.at = at
+	def stage1(self):
+		weight = 0
+		if self.at.grow1hTOT >= self.at.monitorPERC:
+			min3 = self.at.grow1h[-3:]
+			for ind, val in enumerate(min3):
+				try:
+					if val >= 0.4 and val < min3[ind+1]:
+						weight = weight + ((ind+1)*2)
+					else:
+						weight = weight - ((ind+1)*2)
+				except IndexError:
+					if val >= 0.4:
+						weight = weight + ((ind+1)*2)
+					else:
+						weight = weight - ((ind+1)*2)
+			if weight > 6:
+				print(self.at.pair+"-STAGE 1- Cualifica")
+				return True
+			else:
+				#print(self.at.pair+": NO Cualifica PESO: "+str(weight))
+				#print("---"+ str(min3))
+				return False
+		else:
+			return False
+	def stage2(self):
+		if ((self.at.qtys["evalPrice"]/100)*self.at.limitPrice < self.at.maxDay and self.at.qtys["evalPrice"] <= (self.at.medDay/100)*self.at.limitPrice):
+			print(self.at.pair+"- STAGE 2- Cualifica")
+			return True
+		else:
+			#print(self.at.pair+"- STAGE 2- NO Cualifica")
+			return False
+
+
+
+
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
 	y, si cumplen los parametros, ejecuta la funcion Trader en un proceso externo.
@@ -260,35 +299,29 @@ class AT:
 	def startingAnalisys(self):
 		"""[summary]
 		"""
-		#######STAGE 1################
-		weight = 0
-		if self.grow1hTOT >= self.monitorPERC:
-			min3 = self.grow1h[-3:]
-			for ind, val in enumerate(min3):
-				try:
-					if val >= 0.4 and val < min3[ind+1]:
-						weight = weight + ((ind+1)*2)
-					else:
-						weight = weight - ((ind+1)*2)
-				except IndexError:
-					if val >= 0.4:
-						weight = weight + ((ind+1)*2)
-					else:
-						weight = weight - ((ind+1)*2)
-			if weight > 6:
-				print(self.pair+"-STAGE 1- Cualifica")
-				self.monitor = True
-			else:
-				#print(self.at.pair+": NO Cualifica PESO: "+str(weight))
-				#print("---"+ str(min3))
-				self.monitor = False
-		else:
-			#print(self.at.pair+": NO Cualifica CREC: "+ str(self.at.grow1hTOT)+"%")
-			self.monitor = False
-		############################################################################
-		###################STAGE 2#################################################
-		if self.monitor == True or self.force == True:
+		check = Checker(self)
+		stage1 = check.stage1()
+		if stage1 == True or self.force == True:
 			act = Decimal(self.client.get_symbol_ticker(symbol= self.pair)["price"])
+			self.qtys["evalPrice"] = act
+			stage2 = check.stage2()
+			if stage2 == True or self.force == True:
+				self.checkRules()
+				self.openTrade()
+				self.monitor = True
+				mesARR = ["-"*60,
+					self.pair+" MONITOR",
+					str(datetime.now()),
+					"DAY min/med/max: "+ f"{self.minDay:{self.data['precision']}}"+" / "+f"{self.medDay:{self.data['precision']}}"+" / "+f"{self.maxDay:{self.data['precision']}}",
+					"HOUR min/med/max: "+ f"{self.min1h:{self.data['precision']}}"+" / "+f"{self.med1h:{self.data['precision']}}"+" / "+f"{self.max1h:{self.data['precision']}}",
+					"Day/1h grow: "+ str(self.growDay)+"% / "+str(self.grow1hTOT)+"%",
+					"Entrada:"+f"{act:{self.data['precision']}}",
+					"Limit: "+f"{((act/100)*self.limitPrice):{self.data['precision']}}",
+					"Stop: "+f"{((act/100)*self.stopPrice):{self.data['precision']}}"]
+				for line in self.grow1h[-3:]:
+					mesARR.append("--: "+str(line)+"%")
+				logger(self.logName, mesARR)
+			'''act = Decimal(self.client.get_symbol_ticker(symbol= self.pair)["price"])
 			if ((act/100)*self.limitPrice < self.maxDay and act <= (self.medDay/100)*self.limitPrice) or self.force == True:
 				print(self.pair+"- STAGE 2- Cualifica")
 				self.logName = self.pair+"-"+str(datetime.now().date())
@@ -310,7 +343,7 @@ class AT:
 				self.monitor = True
 			else:
 				self.monitor = False
-				print(self.pair+"- STAGE 2- NO Cualifica")
+				print(self.pair+"- STAGE 2- NO Cualifica")'''
 	def __init__(self, client, pair, dayKline, force=False):
 		"""[summary]
 
@@ -341,6 +374,7 @@ class AT:
 		self.maxINV = 20 #Inversion maxima en EUR. Se considerara cantidad minima segun las reglas de trading.
 		self.force = force
 		self.monitor = False
+		self.logName = self.pair+"-"+str(datetime.now().date())
 		self.limitPrice = 105 # Porcentaje maximo para salir de la posicion.
 		self.stopPrice = 95 # Porcentaje minimo para vender.
 		self.setHour()
