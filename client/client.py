@@ -379,7 +379,6 @@ class AT:
 		self.stopPrice = 95 # Porcentaje minimo para vender.
 		self.setHour()
 		self.setDay()
-		self.logName = ""
 		self.qtys = {"baseQty":"",
 					"eurQty": "",
 					"assetQty":"",
