@@ -191,3 +191,4 @@ if __name__ == "__main__":
 	client = Client(real_api_key,real_api_sec)
 	db = DB("../binance.db", client)
 	db.updateSymbols()
+	#db.tradeEND("EOSBNB", str(datetime.now()),"0.0000")

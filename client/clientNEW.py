@@ -81,7 +81,7 @@ def monitor(symbol, limit, stop, qty):
 				tnow = now+tick
 				try:
 					act = Decimal(client.get_symbol_ticker(symbol=symbol)["price"])
-					print(f"{act}")
+					#print(f"{symbol}: {act}")
 					if act >= limit or act <= stop:
 						if debug == False:
 							client.order_market_sell(symbol=symbol, quantity=qty)
@@ -91,6 +91,7 @@ def monitor(symbol, limit, stop, qty):
 						else:
 							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
 							putTraded(symbol, f"{act:.8f}")
+							break
 				except (requests.exceptions.ConnectionError,
 						requests.exceptions.ConnectTimeout,
 						requests.exceptions.HTTPError,

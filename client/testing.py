@@ -13,14 +13,16 @@ real_api_key = environ.get("BINANCE_API_KEY")
 real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
 debug = True
+tradepool= []
 
 def TEST_putTrading():
 	syms = getTradeable()
-	for i in range(5):
+	for i in range(1):
 		rnd = randint(0, len(syms))
 		kline = client.get_historical_klines(syms[rnd]["symbol"], Client.KLINE_INTERVAL_1MINUTE, "5 minutes ago UTC")
 		if len(kline) > 0 :
 			AT(client, syms[rnd], kline, force=True)
+	print(tradepool)
 
 def TEST_getAsset(asset):
 	print(client.get_asset_balance(asset))
