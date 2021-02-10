@@ -120,13 +120,11 @@ def monitor(symbol, limit, stop, qty):
 
 	Args:
 		symbol (STR): Par del trade
-		limit (STR): PORCENTAJE que se usa para generar el precio limite.
-		stop (STR): PORCENTAJE que se usa para generar el precio stop
+		limit (Decimal): Precio limite.
+		stop (Decimal): Precio limite.
 		qty (STR): Cantidad de la moneda en trading.
 	"""
 	tick = timedelta(seconds=2)
-	limit = int(limit)
-	stop = int(stop)
 	tnow = datetime.now()
 	try:
 		while True:
@@ -136,7 +134,7 @@ def monitor(symbol, limit, stop, qty):
 				try:
 					act = Decimal(client.get_symbol_ticker(symbol=symbol)["price"])
 					#print(f"{symbol}: {act}")
-					if act >= (act/100)*limit or act <= (act/100)*stop:
+					if act >= limit or act <= stop:
 						if debug == False:
 							client.order_market_sell(symbol=symbol, quantity=qty)
 							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
@@ -445,7 +443,10 @@ class AT:
 		self.startingAnalisys()
 		if self.monitor == True:
 			mon = multiprocessing.Process(target=monitor,
-										args=(self.pair,str(self.limitPrice),str(self.stopPrice),str(self.qtys["baseQty"]),),
+										args=(self.pair,
+											Decimal((self.qtys["evalPrice"]/100)*self.limitPrice),
+											Decimal((self.qtys["evalPrice"]/100)*self.stopPrice),
+											str(self.qtys["baseQty"]),),
 										name= self.pair)
 			mon.daemon = True
 			tradepool.append(mon)
