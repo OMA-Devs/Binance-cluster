@@ -5,6 +5,7 @@ from clientNEW import AT, Checker, getTradeable
 from datetime import datetime, timedelta
 from binance.client import Client
 from os import environ
+from decimal import Decimal
 
 import multiprocessing
 from random import randint
@@ -65,4 +66,38 @@ def worker(num):
 				break
 	print(name+" Terminado")
 
-TEST_putTrading()
+def TEST_checkRules(inv):
+	syms = getTradeable()
+	sym = None
+	for i in syms:
+		if i["symbol"] == "WINBNB":
+			sym = i
+	act = Decimal(client.get_symbol_ticker(symbol=sym["symbol"])["price"])
+	eurP = Decimal(client.get_symbol_ticker(symbol="BNBEUR")["price"])
+	invBNB = inv/eurP ##Precio de inversion minima en moneda ASSET
+	startQTY = invBNB/act ##CANTIDAD de moneda BASE
+	notionalValue = startQTY*act
+	stepCheck = (startQTY-Decimal(sym["minQty"]))%Decimal(sym["stepSize"])
+	print(sym["precision"])
+	if stepCheck != 0:
+		startQTY = startQTY-stepCheck
+		stepCheck = (startQTY-Decimal(sym["minQty"]))%Decimal(sym["stepSize"])
+		notionalValue = startQTY*act
+		if stepCheck == 0 and notionalValue >= Decimal(sym["minNotional"]):
+			print("stepCheck PASSED. Reajustado")
+			print("minNotional PASSED.")
+			print(f"QTY: {startQTY}")
+			print(f"BNB: {(startQTY*act):.{sym['precision']}f}")
+			print(f"EUR: {(startQTY*act)*eurP:.{sym['precision']}f}")
+	else:
+		print("stepCheck PASSED")
+		if notionalValue >= Decimal(sym["minNotional"]):
+			print("minNotional PASSED")
+		else:
+			print("minNotional NOT PASSED")
+	#print(act)
+	#print(invBNB)
+	#print(startQTY)
+
+
+TEST_checkRules(20)

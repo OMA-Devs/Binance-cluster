@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from ast import literal_eval
 import multiprocessing
+from OpenSSL import SSL
 
 api_key = environ.get("TEST_BINANCE_API")
 api_sec = environ.get("TEST_BINANCE_SEC")
@@ -21,13 +22,35 @@ debug = True
 tradepool = []
 
 def logger(logName, mesARR):
-	f = open("logs/"+logName+".log", "a+")
+	"""Funcion de logging para simplificar los logs del sistema.
+	Decidi no usar el modulo logging pues el conocimiento que tengo
+	no cubre el uso que quiero hacer de él.
+
+	Cuando se ejecuta la funcion, tambien escribe en la terminal los mensajes.
+	Esto es para acelerar la ejecucion.
+
+	Args:
+		logName (STR): Nombre del log. El formato es PAR-str(datetime) sin extension.
+		mesARR (LIST): Lista de mensajes a loggear.
+	"""
+	f = open(f"logs/{logName}.log", "a+")
 	for line in mesARR:
-		f.write(line+"\n")
+		f.write(f"{line}\n")
 		print(line)
 	f.close()
 
 def getTradeable():
+	"""Hace una llamada al servidor maestro para obtener una lista de diccionario de todos los
+	pares que se pueden tradear. El servidor se encarga de excluir los pares que ya estan en
+	trading activo.
+
+	Recibe una cadena de texto con la lista/diccionario como respuesta de la peticion y la evalua para
+	generar la variable en cuestion. Si al intentar evaluar encuentra un error de sintaxis, eso
+	significará que el servidor ha dado una respuesta de error en HTML y devolverá un array vacio.
+
+	Returns:
+		LIST: Lista de Diccionarios con los simbolos y sus reglas de trading.
+	"""
 	payload= {"sym": config.symbol}
 	r = requests.get('http://'+config.masterIP+'/data/getTradeable?', params=payload)
 	text = r.text
@@ -39,6 +62,21 @@ def getTradeable():
 		return []
 
 def putTrading(sym, dayStats, hourStats, prices):
+	"""Funcion que envia los datos del trade recien abierto al servidor central para almacenar
+	en la base de datos.
+
+	Las listas dayStats y hourStats se unen en una cadena. Esto se hace por diversos motivos.
+	El primero, reducir el numero de argumentos en la peticion http. El segundo, reducir el numero
+	de campos en la base de datos.
+
+	Args:
+		sym (STR): Cadena del par cuyo trade se abre.
+		dayStats (LIST): Lista con las variables minDay, medDay y maxDay.
+		hourStats (LIST): Lista con las variables minHour, medHour y maxHour. Debido al funcionamiento
+			actual de la clase Checker, estas variables no son utilizadas y se envian en vacio. Se conserva
+			el argumento, de todos modos, para el caso de que se vuelvan a utilizar.
+		prices (LIST): Lista de precios a almacenar en la base de datos. EvalPrice, stop y limit, en ese orden.
+	"""
 	daySTR = "|".join(dayStats)
 	hourSTR = "|".join(hourStats)
 	ts = str(datetime.timestamp(datetime.now()))
@@ -57,6 +95,12 @@ def putTrading(sym, dayStats, hourStats, prices):
 		print("Trade no recibido en masterNode")
 
 def putTraded(sym, closePrice):
+	"""Funcion que genera el request necesario para cerrar un trade en la base de datos del servidor.
+
+	Args:
+		sym (STR): Par a cerrar.
+		closePrice (STR): Precio de cierre
+	"""
 	ts = str(datetime.timestamp(datetime.now()))
 	payload = {"sym": sym,
 				"endTS": ts,
@@ -70,6 +114,16 @@ def putTraded(sym, closePrice):
 		print("Trade no recibido en masterNode")
 
 def monitor(symbol, limit, stop, qty):
+	"""Función de monitoreo que se ejecuta paralelamente al ciclo principal. Monitorea el precio
+	actual respecto a limite y stop, generando una orden de venta inmediatamente si sobrepasa
+	uno de los dos. 
+
+	Args:
+		symbol (STR): Par del trade
+		limit (STR): PORCENTAJE que se usa para generar el precio limite.
+		stop (STR): PORCENTAJE que se usa para generar el precio stop
+		qty (STR): Cantidad de la moneda en trading.
+	"""
 	tick = timedelta(seconds=2)
 	limit = int(limit)
 	stop = int(stop)
@@ -96,7 +150,8 @@ def monitor(symbol, limit, stop, qty):
 						requests.exceptions.ConnectTimeout,
 						requests.exceptions.HTTPError,
 						requests.exceptions.ReadTimeout,
-						requests.exceptions.RetryError):
+						requests.exceptions.RetryError,
+						SSL.Error):
 					print("Error en peticion, continuando.")
 	except KeyboardInterrupt:
 		if debug == False:
@@ -107,9 +162,27 @@ def monitor(symbol, limit, stop, qty):
 			putTraded(symbol, f"{act:.8f}")
 
 class Checker:
+	"""Antigua clase ALGO. Esta clase engloba las comprobaciones de los
+	datos de la clase AT y determina si un par cualifica o no para un trade.
+
+	Por el momento, la comprobación se compone de 2 etapas.
+	"""
 	def __init__(self, at):
+		"""Metodo de inicialización. Recibe simplemente una instancia de AT
+		para trabajar con sus datos.
+
+		Args:
+			at (AT): Instancia de AT sobre la que ejecutar comprobaciones.
+		"""
 		self.at = at
 	def stage1(self):
+		"""Comprueba el crecimiento en los ultimos 5 minutos y detecta crecimientos
+		con un sistema de pesos. Si el peso final supera el umbral, se determina
+		que el par pasa la primera etapa.
+
+		Returns:
+			BOOL: True si cualifica. False si no lo hace.
+		"""
 		weight = 0
 		#max weight 30
 		for ind, val in enumerate(self.at.min5grow):
@@ -128,6 +201,15 @@ class Checker:
 			#print("---"+ str(self.at.min5grow))
 			return False
 	def stage2(self):
+		"""Segunda etapa. Con los datos diarios comprueba si el precio actual
+		se encuentra en unos limites seguros de compra. Las comprobaciones que
+		efectua son:
+			1- Comprueba que el precio limite determinado NO es superior al maximo diario.
+			2- Comprueba que el precio de evaluacion no es superior a la media diaria+porcentaje limite.
+
+		Returns:
+			BOOL: True si cualifica. False si no lo hace.
+		"""
 		limitPrice = (self.at.qtys["evalPrice"]/100)*self.at.limitPrice
 		if limitPrice < self.at.maxDay:
 			marginAVG = (self.at.medDay/100)*self.at.limitPrice
@@ -141,12 +223,9 @@ class Checker:
 			print(self.at.pair+"- STAGE 2- NO Cualifica. Limit por encima del maximo diario: "+f"{limitPrice:{self.at.data['precision']}}")
 			return False
 
-
-
-
 class AT:
 	"""Clase de analisis tecnico. Ejecuta la clasificacion de los datos y luego el algoritmo de cualificacion
-	y, si cumplen los parametros, ejecuta la funcion Trader en un proceso externo.
+	y, si cumplen los parametros, ejecuta la funcion monitor en un proceso paralelo.
 	"""
 	def _getPercentage(self, kline):
 		"""Obtiene el porcentaje TOTAL de un Kline dado
@@ -165,10 +244,10 @@ class AT:
 		"""Calcula el porcentaje de crecimiento de cada vela de un kline dado
 
 		Args:
-			kline ([type]): [description]
+			kline (LIST): Lista de Kline.
 
 		Returns:
-			[type]: [description]
+			LIST: Lista con los crecimientos.
 		"""
 		growARR = []
 		for line in kline:
@@ -225,28 +304,60 @@ class AT:
 		self.medDay = self._getMedium(self.dayKline)
 		self.growDay = self._getPercentage(self.dayKline)
 	def checkRules(self):
+		"""Comprueba las reglas de trading. Tras una actualizacion, ya no se utiliza un bucle WHILE que puede
+		durar horas dependiendo del par.
+		Aun no me gusta la funcion, pero es impresionantemente mas rapida y solo necesita una mejoría de la
+		gestion de los bucles if para no tener segmentos de codigo repetidos y manejar alguna excepcion excepcional.
+		Las reglas de trading, segun las define la API de Binance, son las siguientes:
+			- filtro minNotional: el filtro minNotional se obtiene con (price*quantity)
+			- filtro marketLot: este filtro se supera con las siguientes condiciones
+				- quantity >= minQty
+				- quantity <= maxQty
+				- (quantity-minQty) % stepSize == 0
+		"""
 		act = Decimal(client.get_symbol_ticker(symbol=self.pair)["price"])
-		startQty = Decimal("0")
-		while True:
-			startQty = startQty+self.data["stepSize"]
-			notionalVALUE = startQty*act
-			if notionalVALUE >= self.data["minNotional"] and startQty >= self.data["minQty"]: ##Se cumple el check minNOTIONAL
-				eurP = Decimal(client.get_symbol_ticker(symbol=config.symbol+"EUR")["price"])
-				qtyEUR = notionalVALUE*eurP
-				if startQty>self.data["minQty"] and (startQty-self.data["minQty"])%self.data["stepSize"] == 0 and qtyEUR >= self.maxINV:
-					self.qtys["baseQty"] = f"{startQty:{self.data['precision']}}"
-					self.qtys["eurQty"] = f"{qtyEUR:{self.data['precision']}}"
-					self.qtys["assetQty"] = f"{notionalVALUE:{self.data['precision']}}"
-					msg = [f"Trading Rules Check PASSED",
+		eurP = Decimal(client.get_symbol_ticker(symbol=f"{config.symbol}EUR")["price"])
+		invASSET = self.maxINV/eurP ##Precio de inversion minima en moneda ASSET
+		startQTY = invASSET/act ##CANTIDAD de moneda BASE
+		notionalValue = startQTY*act
+		stepCheck = (startQTY-self.data["minQty"])%self.data["stepSize"]
+		if stepCheck != 0:
+			startQTY = startQTY-stepCheck
+			stepCheck = (startQTY-self.data["minQty"])%self.data["stepSize"]
+			notionalValue = startQTY*act
+			if stepCheck == 0 and notionalValue >= Decimal(sym["minNotional"]):
+				print("stepCheck PASSED. Reajustado")
+				print("minNotional PASSED.")
+				self.qtys["baseQty"] = f"{startQTY:{self.data['precision']}}"
+				self.qtys["eurQty"] = f"{(startQTY*act)*eurP:{self.data['precision']}}"
+				self.qtys["assetQty"] = f"{notionalValue:{self.data['precision']}}"
+				msg = [f"Trading Rules Check PASSED",
 						"Price:"+f"{act:{self.data['precision']}}",
-						"EUR TO TRADE: "+f"{qtyEUR:{self.data['precision']}}",
-						config.symbol+" TO TRADE: "+f"{notionalVALUE:{self.data['precision']}}",
-						"qty: "+f"{startQty:{self.data['precision']}}",
+						"EUR TO TRADE: "+f"{self.qtys['eurQty']}",
+						config.symbol+" TO TRADE: "+f"{notionalValue:{self.data['precision']}}",
+						"qty: "+f"{startQTY:{self.data['precision']}}",
 						"-"*30]
-					logger(self.logName, msg)
-					break
-				else:
-					pass
+				logger(self.logName, msg)
+		else:
+			print("stepCheck PASSED")
+			if notionalValue >= Decimal(sym["minNotional"]):
+				print("minNotional PASSED")
+				self.qtys["baseQty"] = f"{startQTY:{self.data['precision']}}"
+				self.qtys["eurQty"] = f"{(startQTY*act)*eurP:{self.data['precision']}}"
+				self.qtys["assetQty"] = f"{notionalValue:{self.data['precision']}}"
+				msg = [f"Trading Rules Check PASSED",
+						"Price:"+f"{act:{self.data['precision']}}",
+						"EUR TO TRADE: "+f"{self.qtys['eurQty']}",
+						config.symbol+" TO TRADE: "+f"{notionalValue:{self.data['precision']}}",
+						"qty: "+f"{startQTY:{self.data['precision']}}",
+						"-"*30]
+				logger(self.logName, msg)
+			else:
+				print("minNotional NOT PASSED")
+				self.qtys["baseQty"] = f""
+				self.qtys["eurQty"] = f""
+				self.qtys["assetQty"] = f""
+				print("Trading Rules Check NOT PASSED. Check de loop.")
 	def openTrade(self):
 		msg = []
 		bal = self.client.get_asset_balance(config.symbol)
@@ -362,5 +473,6 @@ if __name__ == "__main__":
 				requests.exceptions.ConnectTimeout,
 				requests.exceptions.HTTPError,
 				requests.exceptions.ReadTimeout,
-				requests.exceptions.RetryError):
+				requests.exceptions.RetryError,
+				SSL.Error):
 			print("Error, saltando a siguiente comprobacion")
