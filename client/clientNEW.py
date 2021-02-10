@@ -71,8 +71,8 @@ def putTraded(sym, closePrice):
 
 def monitor(symbol, limit, stop, qty):
 	tick = timedelta(seconds=2)
-	limit = Decimal(limit)
-	stop = Decimal(stop)
+	limit = int(limit)
+	stop = int(stop)
 	tnow = datetime.now()
 	try:
 		while True:
@@ -82,7 +82,7 @@ def monitor(symbol, limit, stop, qty):
 				try:
 					act = Decimal(client.get_symbol_ticker(symbol=symbol)["price"])
 					#print(f"{symbol}: {act}")
-					if act >= limit or act <= stop:
+					if act >= (act/100)*limit or act <= (act/100)*stop:
 						if debug == False:
 							client.order_market_sell(symbol=symbol, quantity=qty)
 							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
