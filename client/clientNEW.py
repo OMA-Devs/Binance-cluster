@@ -61,7 +61,7 @@ def getTradeable():
 		print("Sin respuesta de masterNode. Solicitando de nuevo.")
 		return []
 
-def putTrading(sym, dayStats, hourStats, prices):
+def putTrading(sym, prices, qtys):
 	"""Funcion que envia los datos del trade recien abierto al servidor central para almacenar
 	en la base de datos.
 
@@ -71,22 +71,17 @@ def putTrading(sym, dayStats, hourStats, prices):
 
 	Args:
 		sym (STR): Cadena del par cuyo trade se abre.
-		dayStats (LIST): Lista con las variables minDay, medDay y maxDay.
-		hourStats (LIST): Lista con las variables minHour, medHour y maxHour. Debido al funcionamiento
-			actual de la clase Checker, estas variables no son utilizadas y se envian en vacio. Se conserva
-			el argumento, de todos modos, para el caso de que se vuelvan a utilizar.
 		prices (LIST): Lista de precios a almacenar en la base de datos. EvalPrice, stop y limit, en ese orden.
+		qtys(LIST): Lista con las cantidades. ASSET es la moneda que usa el nodo para comprar. BASE es la moneda comprada.
 	"""
-	daySTR = "|".join(dayStats)
-	hourSTR = "|".join(hourStats)
 	ts = str(datetime.timestamp(datetime.now()))
 	payload = {"sym": sym,
 				"evalTS": ts,
-				"dayMAM": daySTR,
-				"hourMAM": hourSTR,
 				"evalPrice": prices[0],
 				"stop": prices[1],
-				"limit": prices[2]}
+				"limit": prices[2],
+				"assetQty": qtys[0],
+				"baseQty": qtys[1]}
 	r = requests.get("http://"+config.masterIP+"/data/putTrading?",params= payload)
 	response = r.text
 	if literal_eval(response) == True:
@@ -368,15 +363,11 @@ class AT:
 			msg.append("Orden de compra ejecutada")
 			logger(self.logName, msg)
 			putTrading(self.pair,
-						[f"{self.minDay:{self.data['precision']}}",
-							f"{self.medDay:{self.data['precision']}}",
-							f"{self.maxDay:{self.data['precision']}}"],
-						[f"",
-							f"",
-							f""],
 						[f"{self.qtys['evalPrice']:{self.data['precision']}}",
 							f"{((self.qtys['evalPrice']/100)*self.stopPrice):{self.data['precision']}}",
-							f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}"])
+							f"{((self.qtys['evalPrice']/100)*self.limitPrice):{self.data['precision']}}"],
+						[f"{self.qtys['assetQty']}",
+							f"{self.qtys['baseQty']}"])
 		else:
 			msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
 			logger(self.logName,msg)

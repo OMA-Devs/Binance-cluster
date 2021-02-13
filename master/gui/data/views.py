@@ -27,12 +27,12 @@ def putTrading(request):
 	db = DB(dbName, client)
 	symbol = request.GET["sym"]
 	evalTS = request.GET["evalTS"]
-	dayMAM = request.GET["dayMAM"]
-	hourMAM = request.GET["hourMAM"]
 	evalPrice = request.GET["evalPrice"]
 	stop = request.GET["stop"]
 	limit = request.GET["limit"]
-	db.tradeSTART(symbol,evalTS, dayMAM, hourMAM, evalPrice, stop, limit)
+	assetQty = request.GET["assetQty"]
+	baseQty = request.GET["baseQty"]
+	db.tradeSTART(symbol,evalTS, evalPrice, stop, limit, assetQty, baseQty)
 	try:
 		return HttpResponse(str(True))
 	except OperationalError:

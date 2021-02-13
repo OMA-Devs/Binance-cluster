@@ -107,11 +107,11 @@ class DB:
 		for i in symList:
 			d = {"symbol": i[0],
 				"evalTS": datetime.fromtimestamp(int(i[1].split(".")[0])),
-				"dayMAM": i[2],
-				"hourMAM": i[3],
-				"evalPrice": i[4],
-				"stop": i[5],
-				"limit": i[6]}
+				"evalPrice": i[2],
+				"stop": i[3],
+				"limit": i[4],
+				"assetQty": i[5],
+				"baseQty": i[6]}
 			monitored.append(d) 
 		return monitored
 	def getTRADINGsingle(self, sym):
@@ -153,15 +153,15 @@ class DB:
 		cur = db.cursor()
 		cur.execute("SELECT * FROM trading WHERE symbol = '"+sym+"'")
 		row = cur.fetchall()
-		'''sym, evalPrice, stop, limit, buy, sellP, evalTS, startTS, endTS'''
+		'''sym, evalPrice, stop, limit, sellP, assetQty, baseQty, evalTS, endTS'''
 		values = ["'"+sym+"'",
+			"'"+row[0][2]+"'",
+			"'"+row[0][3]+"'",
 			"'"+row[0][4]+"'",
+			"'"+sellP+"'",
 			"'"+row[0][5]+"'",
 			"'"+row[0][6]+"'",
-			"''",
-			"'"+sellP+"'",
 			"'"+row[0][1]+"'",
-			"''",
 			"'"+endTS+"'"]
 		query = ",".join(values)
 		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"'")
@@ -169,10 +169,17 @@ class DB:
 		cur.execute("INSERT INTO traded VALUES("+query+")")
 		db.commit()
 		db.close()
-	def tradeSTART(self, sym, evalTS, dayMAM, hourMAM, evalPrice, stop, limit):
+	def tradeSTART(self, sym, evalTS, evalPrice, stop, limit, assetQty, baseQty):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("INSERT INTO trading VALUES('"+sym+"','"+str(evalTS)+"','"+dayMAM+"','"+hourMAM+"','"+evalPrice+"','"+stop+"','"+limit+"')")
+		values = ["'"+sym+"'",
+			"'"+evalTS+"'",
+			"'"+stop+"'",
+			"'"+limit+"'",
+			"'"+assetQty+"'",
+			"'"+baseQty+"'"]
+		query = ",". join(values)
+		cur.execute("INSERT INTO trading VALUES("+query+")")
 		db.commit()
 		db.close()
 	def removeTrade(self, sym):
