@@ -148,6 +148,24 @@ class DB:
 		cur.execute("SELECT * FROM traded")
 		symList= cur.fetchall()
 		return symList
+	def getTRADEDdict(self):
+		db = sqlite3.connect(self.name, timeout=30)
+		cur = db.cursor()
+		cur.execute("SELECT * FROM traded")
+		symList= cur.fetchall()
+		traded = []
+		for sym in symList:
+			d = {"symbol": sym[0],
+				"evalPrice": sym[1],
+				"stop": sym[2],
+				"limit": sym[3],
+				"sell": sym[4],
+				"assetQty": sym[5],
+				"baseQty": sym[6],
+				"evalTS": datetime.fromtimestamp(int(sym[7].split(".")[0])),
+				"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0]))}
+			traded.append(d)
+		return traded
 	def tradeEND(self, sym, endTS, sellP):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()

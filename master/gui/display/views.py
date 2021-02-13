@@ -1,5 +1,6 @@
 from datetime import datetime
 from os import environ
+from decimal import Decimal
 
 import plotly.graph_objects as go
 from binance.client import Client
@@ -21,6 +22,12 @@ def Trading(request):
 	a = db.getTRADINGdict()
 	d = {"syms": a}
 	return render(request, "trading.html", d)
+
+def Traded(request):
+	db = DB(dbName,client)
+	a = db.getTRADEDdict()
+	d = {"syms": a}
+	return render(request, "traded.html", d)
 
 def Graph(request):
 	sym = request.GET["sym"]
