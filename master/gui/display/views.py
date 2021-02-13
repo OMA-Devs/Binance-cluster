@@ -26,7 +26,21 @@ def Trading(request):
 def Traded(request):
 	db = DB(dbName,client)
 	a = db.getTRADEDdict()
-	d = {"syms": a}
+	assets = [{"name": "ETH", "good": 0, "bad": 0, "percGood": 0, "benefit": 0},
+				{"name": "BNB", "good": 0, "bad": 0, "percGood": 0, "benefit": 0}]
+	for item in a:
+		evalPrice = Decimal(item["evalPrice"])
+		endPrice = Decimal(item["sell"])
+		if endPrice > evalPrice:
+			item["tradeEND"] = True
+		else:
+			item["tradeEND"] = False
+
+	for asset in assets:
+		for item in a:
+			pass
+
+	d = {"syms": a, "percs": assets}
 	return render(request, "traded.html", d)
 
 def Graph(request):

@@ -192,6 +192,7 @@ class DB:
 		cur = db.cursor()
 		values = ["'"+sym+"'",
 			"'"+evalTS+"'",
+			"'"+evalPrice+"'",
 			"'"+stop+"'",
 			"'"+limit+"'",
 			"'"+assetQty+"'",
