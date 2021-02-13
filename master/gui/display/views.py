@@ -37,10 +37,20 @@ def Traded(request):
 			item["tradeEND"] = False
 
 	for asset in assets:
+		Lass = len(asset["name"])
 		for item in a:
-			pass
+			if item["symbol"][Lass-Lass*2:] == asset["name"]:
+				if item["tradeEND"] == True:
+					asset["good"] = asset["good"] + 1
+				else:
+					asset["bad"] = asset["bad"] + 1
+				soldAT = Decimal(item["sell"])*Decimal(item["baseQty"])
+				ben = soldAT-Decimal(item["assetQty"])
+				asset["benefit"] = asset["benefit"] + ben
+		totTrades = asset["good"]+asset["bad"]
+		asset["percGood"] = (asset["good"]/totTrades)*100
 
-	d = {"syms": a, "percs": assets}
+	d = {"syms": a, "assets": assets}
 	return render(request, "traded.html", d)
 
 def Graph(request):

@@ -2,8 +2,15 @@
 
 
 {% block content %}
-<h2>Resumen trades BNB</h2>
-
+{% for asset in assets %}
+<h2>Resument de Trades {{asset.name}}</h2>
+<ul>
+	<li>Ganados: {{asset.good}}</li>
+	<li>Perdidos: {{asset.bad}}</li>
+	<li>Efectividad: {{asset.percGood}}</li>
+	<li>Beneficio: {{asset.benefit}} {{asset.name}}</li>
+</ul>
+{% endfor %}
 <h2>Lista de Trades Completa</h2>
 <table class="w3-table-all">
 <th class="w3-center">RESULTADO</th>
