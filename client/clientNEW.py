@@ -422,7 +422,7 @@ class AT:
 		self.force = force
 		self.monitor = False
 		self.logName = self.pair+"-"+str(datetime.now().date())
-		self.limitPrice = 105 # Porcentaje maximo para salir de la posicion.
+		self.limitPrice = 107 # Porcentaje maximo para salir de la posicion.
 		self.stopPrice = 95 # Porcentaje minimo para vender.
 		#self.setHour()
 		#self.setDay()
