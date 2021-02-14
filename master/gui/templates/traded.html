@@ -2,15 +2,28 @@
 
 
 {% block content %}
+<div class="w3-cell-row">
+<div class="w3-cell">
+	<h2>Estadisticas generales</h2>
+	<ul>
+		<li>Ganados: {{general.good}}</li>
+		<li>Perdidos: {{general.bad}}</li>
+		<li>Efectividad: {{general.percGood}}</li>
+		<li>Duracion media: {{general.duration}}</li>
+	</ul>
+</div>
 {% for asset in assets %}
-<h2>Resument de Trades {{asset.name}}</h2>
-<ul>
-	<li>Ganados: {{asset.good}}</li>
-	<li>Perdidos: {{asset.bad}}</li>
-	<li>Efectividad: {{asset.percGood}}</li>
-	<li>Beneficio: {{asset.benefit}} {{asset.name}}</li>
-</ul>
+<div class="w3-cell">
+	<h2>Resumen de Trades {{asset.name}}</h2>
+	<ul>
+		<li>Ganados: {{asset.good}}</li>
+		<li>Perdidos: {{asset.bad}}</li>
+		<li>Efectividad: {{asset.percGood}}</li>
+		<li>Beneficio: {{asset.benefit}} {{asset.name}}</li>
+	</ul>
+</div>
 {% endfor %}
+</div>
 <h2>Lista de Trades Completa</h2>
 <table class="w3-table-all">
 <th class="w3-center">RESULTADO</th>
@@ -23,6 +36,7 @@
 <th class="w3-center">ASSET QTY</th>
 <th class="w3-center">INICIO</th>
 <th class="w3-center">FIN</th>
+<th class="w3-center">DURACION</th>
 {% for row in syms %}
 <tr class="w3-center">
 	{% if row.tradeEND == True %}
@@ -39,6 +53,7 @@
 	<td class="w3-center">{{row.assetQty}}</td>
 	<td class="w3-center">{{row.evalTS}}</td>
 	<td class="w3-center">{{row.endTS}}</td>
+	<td class="w3-center">{{row.duration}}</td>
 </tr>
 {% endfor %}
 </table>
