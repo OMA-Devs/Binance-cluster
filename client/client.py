@@ -21,6 +21,9 @@ debug = True
 
 tradepool = []
 
+def login(conn, msg):
+	pass
+
 def logger(logName, mesARR):
 	"""Funcion de logging para simplificar los logs del sistema.
 	Decidi no usar el modulo logging pues el conocimiento que tengo
@@ -418,7 +421,7 @@ class AT:
 		#self.grow1hTOT = self._getPercentage(self.dayKline[-60:]) #Crecimiento (en porcentaje) de una hora en total
 		#self.grow1h = [] #Crecimiento (en porcentaje) de la ultima hora, minuto a minuto.
 		#self.monitorPERC = 1 #Porcentaje en el que si inician las operaciones y el monitoreo
-		self.maxINV = 20 #Inversion maxima en EUR. Se considerara cantidad minima segun las reglas de trading.
+		self.maxINV = config.eurINV #Inversion maxima en EUR. Se considerara cantidad minima segun las reglas de trading.
 		self.force = force
 		self.monitor = False
 		self.logName = self.pair+"-"+str(datetime.now().date())
@@ -445,26 +448,33 @@ class AT:
 
 
 if __name__ == "__main__":
+	flagFULLshift = False
+	if config.startHour == config.endHour:
+		flagFULLshift = True
 	while True:
-		try:
-			tradeable = getTradeable()
-			for ind, j in enumerate(tradepool):
-				if j.is_alive() == False:
-					tradepool.pop(ind)
-			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
-			if len(tradepool) > 0:
-				print("Trades Abiertos:")
-				for j in tradepool:
-					print("- "+ j.name)
-			for sym in tradeable:
-				#print(sym)
-				kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "5 minutes ago UTC")
-				if len(kline) > 0:
-					a = AT(client, sym, kline)
-		except (requests.exceptions.ConnectionError,
-				requests.exceptions.ConnectTimeout,
-				requests.exceptions.HTTPError,
-				requests.exceptions.ReadTimeout,
-				requests.exceptions.RetryError,
-				SSL.Error):
-			print("Error, saltando a siguiente comprobacion")
+		dt = datetime.now()
+		if (dt.hour >= config.startHour and dt.hour < config.endHour) or flagFULLshift == True :
+			try:
+				print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
+				tradeable = getTradeable()
+				for ind, j in enumerate(tradepool):
+					if j.is_alive() == False:
+						tradepool.pop(ind)
+				if len(tradepool) > 0:
+					print("Trades Abiertos:")
+					for j in tradepool:
+						print("- "+ j.name)
+				for sym in tradeable:
+					#print(sym)
+					kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "5 minutes ago UTC")
+					if len(kline) > 0:
+						a = AT(client, sym, kline)
+			except (requests.exceptions.ConnectionError,
+					requests.exceptions.ConnectTimeout,
+					requests.exceptions.HTTPError,
+					requests.exceptions.ReadTimeout,
+					requests.exceptions.RetryError,
+					SSL.Error):
+				print("Error, saltando a siguiente comprobacion")
+		else:
+			pass
