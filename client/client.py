@@ -12,6 +12,12 @@ from ast import literal_eval
 import multiprocessing
 from OpenSSL import SSL
 
+title = '''
+____ ____ ____ _    ___  ____ ____ 
+[__  |    |__| |    |__] |___ |__/ 
+___] |___ |  | |___ |    |___ |  \\
+'''
+
 api_key = environ.get("TEST_BINANCE_API")
 api_sec = environ.get("TEST_BINANCE_SEC")
 real_api_key = environ.get("BINANCE_API_KEY")
@@ -448,17 +454,34 @@ class AT:
 
 
 if __name__ == "__main__":
-	print('''
-____ ____ ____ _    ___  ____ ____ 
-[__  |    |__| |    |__] |___ |__/ 
-___] |___ |  | |___ |    |___ |  \\
-''')
-	flagFULLshift = False
+	print(title)
+	shiftDelta = None
+	start = None
+	endDelta = None
 	if config.startHour == config.endHour:
-		flagFULLshift = True
+		start = datetime.now()+timedelta(minutes=5)
+		endDelta = start+timedelta(hours=24)
+		shiftDelta = timedelta(hours=24)
+	else:
+		shiftHours = config.startHour-config.endHour
+		if shiftHours < 0:
+			shiftHours = shiftHours+(shiftHours*-2)
+		else:
+			pass
+		shiftDelta = timedelta(hours=shiftHours)
+		dtNow = datetime.now()
+		if dtNow.hour >= config.startHour:
+			start = datetime(dtNow.year,dtNow.month,dtNow.day+1,config.startHour, 0,0,0)
+		else:
+			start = datetime(dtNow.year,dtNow.month,dtNow.day,config.startHour,0,0,0)
+		try:
+			endDelta = start+shiftDelta
+		except TypeError:
+			endDelta = dtNow+timedelta(hours=24)
+	print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-dtNow}")
 	while True:
 		dt = datetime.now()
-		if (dt.hour >= config.startHour and dt.hour < config.endHour) or flagFULLshift == True :
+		if (dt >= start and dt < endDelta):
 			try:
 				print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
 				tradeable = getTradeable()
@@ -481,5 +504,12 @@ ___] |___ |  | |___ |    |___ |  \\
 					requests.exceptions.RetryError,
 					SSL.Error):
 				print("Error, saltando a siguiente comprobacion")
+		elif (dt >= endDelta):
+			start = start+timedelta(hours=24)
+			endDelta = start+shiftDelta
+			print(title)
+			print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-datetime.now()}")
+		elif (dt < start):
+			pass
 		else:
 			pass
