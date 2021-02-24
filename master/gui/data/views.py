@@ -19,12 +19,14 @@ client = Client(real_api_key,real_api_sec)
 dbName = "/var/www/html/Binance/master/binance.db"
 
 def getTradeable(request):
-	db = DB(dbName, client)
+	shift = request.GET["shift"]
+	db = DB(dbName, client, shift)
 	tradeable = db.getTRADEABLE(request.GET["sym"])
 	return HttpResponse(json.dumps(tradeable))
 
 def putTrading(request):
-	db = DB(dbName, client)
+	shift = request.GET["shift"]
+	db = DB(dbName, client, shift)
 	symbol = request.GET["sym"]
 	evalTS = request.GET["evalTS"]
 	evalPrice = request.GET["evalPrice"]
@@ -32,20 +34,21 @@ def putTrading(request):
 	limit = request.GET["limit"]
 	assetQty = request.GET["assetQty"]
 	baseQty = request.GET["baseQty"]
-	db.tradeSTART(symbol,evalTS, evalPrice, stop, limit, assetQty, baseQty)
 	try:
+		db.tradeSTART(symbol,evalTS, evalPrice, stop, limit, assetQty, baseQty)
 		return HttpResponse(str(True))
 	except OperationalError:
 		####COMPRUEBA LOS PERMISOS DE LA BASE DE DATOS!!!!
 		return HttpResponse(str(False))
 
 def putTraded(request):
-	db = DB(dbName, client)
+	shift = request.GET["shift"]
+	db = DB(dbName, client, shift)
 	symbol = request.GET["sym"]
 	endTS = request.GET["endTS"]
 	sellPrice = request.GET["sellPrice"]
-	db.tradeEND(symbol,endTS, sellPrice)
 	try:
+		db.tradeEND(symbol,endTS, sellPrice)
 		return HttpResponse(str(True))
 	except OperationalError:
 		####COMPRUEBA LOS PERMISOS DE LA BASE DE DATOS!!!!

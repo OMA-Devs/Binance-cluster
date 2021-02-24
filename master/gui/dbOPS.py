@@ -8,17 +8,19 @@ class DB:
 	"""Clase que engloba todas las operaciones de base de datos. Se ha hecho necesaria ya que la modularización del programa está causando
 	que haya muchas llamadas desperdigadas por las funciones y mucho codigo duplicado (apertura, commit, cierre) en cada una de ellas.
 	"""
-	def __init__(self, name, client):
+	def __init__(self, name, client, shift):
 		"""Inicializacion de la clase. Sencilla, simplificada. Solo requiere un nombre de base de datos y una instancia de cliente
 		de BINANCE para funcionar.
 
 		Args:
 			name (String): Nombre de la base de datos. Existe el argumento debido a que pueden utilizarse dos bases de datos. La de prueba
 			y la de produccion. Las API de binance de prueba y produccion son diferentes.
-			client (binance.Client): Instancia de cliente de binance, utilizado para obtener informacion del exchange y poco más. 
+			client (binance.Client): Instancia de cliente de binance, utilizado para obtener informacion del exchange y poco más.
+			shift (str|bool): Para especificar en la conexion el campo shift de los trades o "ALL" para las busquedas generales.  
 		"""
 		self.name = name
 		self.client = client
+		self.shift = str(shift)
 	def updateSymbols(self):
 		"""Borra y reescribe completamente la tabla de simbolos en la base de datos
 		"""
@@ -35,6 +37,9 @@ class DB:
 			minQty = "-"
 			stepSize = "-"
 			precision = "-"
+			acierto = "0"
+			total = "0"
+			percent = "0"
 			for filt in sym["filters"]:
 				if filt["filterType"] == "MIN_NOTIONAL":
 					minNotional = filt["minNotional"]
@@ -45,7 +50,16 @@ class DB:
 				precision = sym["baseAssetPrecision"]
 			except KeyError:
 				pass
-			cur.execute('INSERT INTO symbols VALUES("'+sym["symbol"]+'","'+minNotional+'","'+minQty+'","'+stepSize+'","'+str(precision)+'")')
+			queryARR = ["'"+sym["symbol"]+"'",
+						"'"+minNotional+"'",
+						"'"+minQty+"'",
+						"'"+stepSize+"'",
+						"'"+str(precision)+"'",
+						"'"+acierto+"'",
+						"'"+total+"'",
+						"'"+percent+"'"]
+			querySTR = ",".join(queryARR)
+			cur.execute('INSERT INTO symbols VALUES('+querySTR+')')
 			db.commit()
 			if sym["symbol"] in old:
 				pass
@@ -60,12 +74,12 @@ class DB:
 		El tratamiento convierte las tuplas en diccionarios de mas facil utilización.
 
 		Returns:
-			[List]: Lista con todos los simbolos en formato de cadenas de texto y sus
+			[List]: Lista con todos los simbolos en formato diccionario y sus
 			reglas de trading.
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT symbol, minNotional, minQty, stepSize, precision FROM symbols")
+		cur.execute("SELECT * FROM symbols")
 		symList = cur.fetchall()
 		db.close()
 		clean = []
@@ -77,10 +91,13 @@ class DB:
 			d["minQty"] = i[2]
 			d["stepSize"] = i[3]
 			d["precision"] = i[4]
+			d["acierto"] = i[5]
+			d["total"] = i[6]
+			d["percent"] = [7]
 			clean.append(d)
 		return clean
-	def getTRADING(self):
-		"""Obtiene los simbolos en trading activo.
+	'''def getTRADING(self):
+		"""Obtiene los simbolos en trading activo. Atencion, SOLO
 		Returns:
 			List: Lista de simbolos en trading activo.
 		"""
@@ -92,15 +109,16 @@ class DB:
 		monitored = []
 		for i in symList:
 			monitored.append(i[0])
-		return monitored
+		return monitored'''
 	def getTRADINGdict(self):
-		"""Obtiene los simbolos en trading activo.
+		"""Obtiene una lista de diccionarios con la información de la tabla trading.
+
 		Returns:
-			List: Lista de simbolos en trading activo.
+			List: Lista de diccionarios con la información de cada trade en TRADING
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT * FROM trading")
+		cur.execute("SELECT * FROM trading WHERE shift ='"+self.shift+"'")
 		symList = cur.fetchall()
 		db.close()
 		monitored = []
@@ -111,15 +129,25 @@ class DB:
 				"stop": i[3],
 				"limit": i[4],
 				"assetQty": i[5],
-				"baseQty": i[6]}
+				"baseQty": i[6],
+				"shift": i[7]
+				}
 			monitored.append(d) 
 		return monitored
 	def getTRADINGsingle(self, sym):
 		"""Funcion rapida para chequear si el simbolo esta en trading activo. Se utiliza en DB.getTRADEABLE
+
+		Args:
+			shift (str|bool): Descriptor para devolver trades reales en turno, test
+			de recopilacion de datos o todo. True para los reales, False para los test
+			y ALL para todos.
+
+		Returns:
+			Bool: Dependiendo de si existe o no en la tabla.
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT symbol FROM trading WHERE symbol = '"+sym+"'")
+		cur.execute("SELECT symbol FROM trading WHERE symbol = '"+sym+"' AND shift = '"+self.shift+"'")
 		symList = cur.fetchall()
 		#print(sym+str(len(symList)))
 		db.close()
@@ -142,17 +170,18 @@ class DB:
 					buyable.append(sym)
 		#print(len(buyable))
 		return buyable
-	def getTRADED(self):
+	'''def getTRADED(self):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
 		cur.execute("SELECT * FROM traded")
 		symList= cur.fetchall()
-		return symList
+		return symList'''
 	def getTRADEDdict(self):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT * FROM traded")
+		cur.execute("SELECT * FROM traded WHERE shift = '"+self.shift+"'")
 		symList= cur.fetchall()
+		db.close()
 		traded = []
 		for sym in symList:
 			d = {"symbol": sym[0],
@@ -163,15 +192,16 @@ class DB:
 				"assetQty": sym[5],
 				"baseQty": sym[6],
 				"evalTS": datetime.fromtimestamp(int(sym[7].split(".")[0])),
-				"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0]))}
+				"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0])),
+				"shift": sym[9]}
 			traded.append(d)
 		return traded
 	def tradeEND(self, sym, endTS, sellP):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT * FROM trading WHERE symbol = '"+sym+"'")
+		cur.execute("SELECT * FROM trading WHERE symbol = '"+sym+"' AND shift = '"+self.shift+"'")
 		row = cur.fetchall()
-		'''sym, evalPrice, stop, limit, sellP, assetQty, baseQty, evalTS, endTS'''
+		'''sym, evalPrice, stop, limit, sellP, assetQty, baseQty, evalTS, endTS, shift'''
 		values = ["'"+sym+"'",
 			"'"+row[0][2]+"'",
 			"'"+row[0][3]+"'",
@@ -180,9 +210,10 @@ class DB:
 			"'"+row[0][5]+"'",
 			"'"+row[0][6]+"'",
 			"'"+row[0][1]+"'",
-			"'"+endTS+"'"]
+			"'"+endTS+"'",
+			"'"+row[0][7]+"'"]
 		query = ",".join(values)
-		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"'")
+		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"' AND shift = '"+self.shift+"'")
 		db.commit()
 		cur.execute("INSERT INTO traded VALUES("+query+")")
 		db.commit()
@@ -196,7 +227,8 @@ class DB:
 			"'"+stop+"'",
 			"'"+limit+"'",
 			"'"+assetQty+"'",
-			"'"+baseQty+"'"]
+			"'"+baseQty+"'",
+			"'"+self.shift+"'"]
 		query = ",". join(values)
 		cur.execute("INSERT INTO trading VALUES("+query+")")
 		db.commit()
@@ -204,7 +236,7 @@ class DB:
 	def removeTrade(self, sym):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"'")
+		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"' AND shift = '"+self.shift+"'")
 		db.commit()
 		db.close()
 
@@ -215,6 +247,6 @@ if __name__ == "__main__":
 	real_api_key = environ.get("BINANCE_API_KEY")
 	real_api_sec = environ.get("BINANCE_API_SEC")
 	client = Client(real_api_key,real_api_sec)
-	db = DB("../binance.db", client)
+	db = DB("../binance.db", client, "ALL")
 	db.updateSymbols()
 	#db.tradeEND("EOSBNB", str(datetime.now()),"0.0000")

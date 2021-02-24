@@ -24,11 +24,25 @@ real_api_key = environ.get("BINANCE_API_KEY")
 real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
 debug = True
+shift = None
+
+pools = {"True": [],
+		"False": []
+		}
 
 tradepool = []
 
-def login(conn, msg):
-	pass
+def inShift(startDT, endDT, nowDT):
+	if nowDT >= startDT and nowDT < endDT:
+		return True
+	else:
+		return False
+
+def cleanPools():
+	for poolName in pools:
+		for ind, j in enumerate(pools[poolName]):
+			if j.is_alive() == False:
+				pools[poolName].pop(ind)
 
 def logger(logName, mesARR):
 	"""Funcion de logging para simplificar los logs del sistema.
@@ -60,7 +74,8 @@ def getTradeable():
 	Returns:
 		LIST: Lista de Diccionarios con los simbolos y sus reglas de trading.
 	"""
-	payload= {"sym": config.symbol}
+	payload= {"sym": config.symbol,
+			"shift": str(shift)}
 	r = requests.get('http://'+config.masterIP+'/data/getTradeable?', params=payload)
 	text = r.text
 	try:
@@ -90,7 +105,8 @@ def putTrading(sym, prices, qtys):
 				"stop": prices[1],
 				"limit": prices[2],
 				"assetQty": qtys[0],
-				"baseQty": qtys[1]}
+				"baseQty": qtys[1],
+				"shift": shift}
 	r = requests.get("http://"+config.masterIP+"/data/putTrading?",params= payload)
 	response = r.text
 	if literal_eval(response) == True:
@@ -108,7 +124,8 @@ def putTraded(sym, closePrice):
 	ts = str(datetime.timestamp(datetime.now()))
 	payload = {"sym": sym,
 				"endTS": ts,
-				"sellPrice": closePrice
+				"sellPrice": closePrice,
+				"shift": shift
 				}
 	r = requests.get("http://"+config.masterIP+"/data/putTraded?",params= payload)
 	response = r.text
@@ -480,36 +497,37 @@ if __name__ == "__main__":
 			endDelta = dtNow+timedelta(hours=24)
 	print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-dtNow}")
 	while True:
+		cleanPools()
 		dt = datetime.now()
-		if (dt >= start and dt < endDelta):
-			try:
-				print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
-				tradeable = getTradeable()
-				for ind, j in enumerate(tradepool):
-					if j.is_alive() == False:
-						tradepool.pop(ind)
-				if len(tradepool) > 0:
-					print("Trades Abiertos:")
-					for j in tradepool:
-						print("- "+ j.name)
-				for sym in tradeable:
-					#print(sym)
-					kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "5 minutes ago UTC")
-					if len(kline) > 0:
-						a = AT(client, sym, kline)
-			except (requests.exceptions.ConnectionError,
-					requests.exceptions.ConnectTimeout,
-					requests.exceptions.HTTPError,
-					requests.exceptions.ReadTimeout,
-					requests.exceptions.RetryError,
-					SSL.Error):
-				print("Error, saltando a siguiente comprobacion")
-		elif (dt >= endDelta):
-			start = start+timedelta(hours=24)
-			endDelta = start+shiftDelta
-			print(title)
-			print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-datetime.now()}")
-		elif (dt < start):
-			pass
+		if inShift(start, endDelta, dt) == True:
+			shift = "True"
+			tradepool = pools["True"]
+			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
+			if len(tradepool) > 0:
+				print("Trades Abiertos:")
+				for j in tradepool:
+					print("- "+ j.name)
 		else:
-			pass
+			shift = "False"
+			tradepool = pools["False"]
+			if (dt >= endDelta):
+				start = start+timedelta(hours=24)
+				endDelta = start+shiftDelta
+				print(title)
+				print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-datetime.now()}")
+			elif (dt < start):
+				pass
+		try:
+			tradeable = getTradeable()
+			for sym in tradeable:
+				#print(sym)
+				kline = client.get_historical_klines(sym["symbol"], Client.KLINE_INTERVAL_1MINUTE, "5 minutes ago UTC")
+				if len(kline) > 0:
+					a = AT(client, sym, kline)
+		except (requests.exceptions.ConnectionError,
+				requests.exceptions.ConnectTimeout,
+				requests.exceptions.HTTPError,
+				requests.exceptions.ReadTimeout,
+				requests.exceptions.RetryError,
+				SSL.Error):
+			print("Error, saltando a siguiente comprobacion")
