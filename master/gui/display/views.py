@@ -17,6 +17,9 @@ real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
 dbName = "/var/www/html/Binance/master/binance.db"
 
+def index(request):
+	return render(request, "index.html")
+
 def Trading(request):
 	db = DB(dbName,client, request.GET["shift"])
 	a = db.getTRADINGdict()
