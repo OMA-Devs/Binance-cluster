@@ -118,7 +118,10 @@ class DB:
 		"""
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT * FROM trading WHERE shift ='"+self.shift+"'")
+		if self.shift == "ALL":
+			cur.execute(f"SELECT * FROM trading")
+		else:
+			cur.execute(f"SELECT * FROM trading WHERE shift ='{self.shift}'")
 		symList = cur.fetchall()
 		db.close()
 		monitored = []
@@ -179,7 +182,10 @@ class DB:
 	def getTRADEDdict(self):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()
-		cur.execute("SELECT * FROM traded WHERE shift = '"+self.shift+"'")
+		if self.shift == "ALL":
+			cur.execute("SELECT * FROM traded")
+		else:
+			cur.execute(f"SELECT * FROM traded WHERE shift = '{self.shift}'")
 		symList= cur.fetchall()
 		db.close()
 		traded = []

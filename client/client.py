@@ -59,7 +59,10 @@ def logger(logName, mesARR):
 	f = open(f"logs/{logName}.log", "a+")
 	for line in mesARR:
 		f.write(f"{line}\n")
-		print(line)
+		if shift == True:
+			print(line)
+		else:
+			pass
 	f.close()
 
 def getTradeable():
@@ -88,10 +91,6 @@ def getTradeable():
 def putTrading(sym, prices, qtys):
 	"""Funcion que envia los datos del trade recien abierto al servidor central para almacenar
 	en la base de datos.
-
-	Las listas dayStats y hourStats se unen en una cadena. Esto se hace por diversos motivos.
-	El primero, reducir el numero de argumentos en la peticion http. El segundo, reducir el numero
-	de campos en la base de datos.
 
 	Args:
 		sym (STR): Cadena del par cuyo trade se abre.
@@ -125,7 +124,7 @@ def putTraded(sym, closePrice):
 	payload = {"sym": sym,
 				"endTS": ts,
 				"sellPrice": closePrice,
-				"shift": shift
+				"shift": str(shift)
 				}
 	r = requests.get("http://"+config.masterIP+"/data/putTraded?",params= payload)
 	response = r.text
@@ -158,13 +157,9 @@ def monitor(symbol, limit, stop, qty):
 					if act >= limit or act <= stop:
 						if debug == False:
 							client.order_market_sell(symbol=symbol, quantity=qty)
-							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
-							putTraded(symbol, f"{act:.8f}")
-							break
-						else:
-							print(symbol+ "- Trade cerrado en: "+f"{act:.8f}")
-							putTraded(symbol, f"{act:.8f}")
-							break
+						print(f"{shift}: {symbol}- Trade cerrado en: {act:.8f}")
+						putTraded(symbol, f"{act:.8f}")
+						break
 				except (requests.exceptions.ConnectionError,
 						requests.exceptions.ConnectTimeout,
 						requests.exceptions.HTTPError,
@@ -175,10 +170,8 @@ def monitor(symbol, limit, stop, qty):
 	except KeyboardInterrupt:
 		if debug == False:
 			client.order_market_sell(symbol=symbol, quantity=qty)
-			putTraded(symbol, f"{act:.8f}")
-		else:
-			print("Trade cerrado manualmente")
-			putTraded(symbol, f"{act:.8f}")
+		print(f"{shift}: {symbol}- Trade cerrado manualmente")
+		putTraded(symbol, f"{act:.8f}")
 
 class Checker:
 	"""Antigua clase ALGO. Esta clase engloba las comprobaciones de los
@@ -212,7 +205,8 @@ class Checker:
 			elif val < 0:
 				weight = weight - ((ind+1)*2)
 		if weight > 18:
-			print(self.at.pair+"-STAGE 1- Cualifica")
+			if shift == True:
+				print(self.at.pair+"-STAGE 1- Cualifica")
 			#print("---"+ str(self.at.min5grow))
 			return True
 		else:
@@ -233,13 +227,14 @@ class Checker:
 		if limitPrice < self.at.maxDay:
 			marginAVG = (self.at.medDay/100)*self.at.limitPrice
 			if self.at.qtys["evalPrice"] <= marginAVG:
-				print(self.at.pair+"- STAGE 2- Cualifica")
+				if shift == True:
+					print(self.at.pair+"- STAGE 2- Cualifica")
 				return True
 			else:
-				print(f"{self.at.pair} - STAGE 2 NO Cualifica. Precio actual superior a media+limit: {marginAVG:{self.at.data['precision']}}")
+				#print(f"{self.at.pair} - STAGE 2 NO Cualifica. Precio actual superior a media+limit: {marginAVG:{self.at.data['precision']}}")
 				return False
 		else:
-			print(self.at.pair+"- STAGE 2- NO Cualifica. Limit por encima del maximo diario: "+f"{limitPrice:{self.at.data['precision']}}")
+			#print(self.at.pair+"- STAGE 2- NO Cualifica. Limit por encima del maximo diario: "+f"{limitPrice:{self.at.data['precision']}}")
 			return False
 
 class AT:
@@ -345,38 +340,45 @@ class AT:
 			stepCheck = (startQTY-self.data["minQty"])%self.data["stepSize"]
 			notionalValue = startQTY*act
 			if stepCheck == 0 and notionalValue >= Decimal(sym["minNotional"]):
-				print("stepCheck PASSED. Reajustado")
-				print("minNotional PASSED.")
+				'''print("stepCheck PASSED. Reajustado")
+				print("minNotional PASSED.")'''
 				self.qtys["baseQty"] = f"{startQTY:{self.data['precision']}}"
 				self.qtys["eurQty"] = f"{(startQTY*act)*eurP:{self.data['precision']}}"
 				self.qtys["assetQty"] = f"{notionalValue:{self.data['precision']}}"
-				msg = [f"Trading Rules Check PASSED",
+				'''msg = [f"Trading Rules Check PASSED",
 						"Price:"+f"{act:{self.data['precision']}}",
 						"EUR TO TRADE: "+f"{self.qtys['eurQty']}",
 						config.symbol+" TO TRADE: "+f"{notionalValue:{self.data['precision']}}",
 						"qty: "+f"{startQTY:{self.data['precision']}}",
 						"-"*30]
-				logger(self.logName, msg)
+				logger(self.logName, msg)'''
+				return True
+			else:
+				'''msg = [f"stepCheck/notionalValue NOT PASSED"]
+				logger(self.logName, msg)'''
+				return False
 		else:
-			print("stepCheck PASSED")
+			'''print("stepCheck PASSED")'''
 			if notionalValue >= Decimal(sym["minNotional"]):
 				print("minNotional PASSED")
 				self.qtys["baseQty"] = f"{startQTY:{self.data['precision']}}"
 				self.qtys["eurQty"] = f"{(startQTY*act)*eurP:{self.data['precision']}}"
 				self.qtys["assetQty"] = f"{notionalValue:{self.data['precision']}}"
-				msg = [f"Trading Rules Check PASSED",
+				'''msg = [f"Trading Rules Check PASSED",
 						"Price:"+f"{act:{self.data['precision']}}",
 						"EUR TO TRADE: "+f"{self.qtys['eurQty']}",
 						config.symbol+" TO TRADE: "+f"{notionalValue:{self.data['precision']}}",
 						"qty: "+f"{startQTY:{self.data['precision']}}",
 						"-"*30]
-				logger(self.logName, msg)
+				logger(self.logName, msg)'''
+				return True
 			else:
-				print("minNotional NOT PASSED")
+				'''print("minNotional NOT PASSED")'''
 				self.qtys["baseQty"] = f""
 				self.qtys["eurQty"] = f""
 				self.qtys["assetQty"] = f""
-				print("Trading Rules Check NOT PASSED. Check de loop.")
+				'''print("Trading Rules Check NOT PASSED. Check de loop.")'''
+				return False
 	def openTrade(self):
 		msg = []
 		bal = self.client.get_asset_balance(config.symbol)
@@ -395,7 +397,7 @@ class AT:
 						[f"{self.qtys['assetQty']}",
 							f"{self.qtys['baseQty']}"])
 		else:
-			msg.append("Orden de compra no ejecutada. No hay suficiente cantidad de "+config.symbol)
+			msg.append(f"Orden de compra no ejecutada. No hay suficiente cantidad de {config.symbol}")
 			logger(self.logName,msg)
 	def startingAnalisys(self):
 		"""[summary]
@@ -410,7 +412,10 @@ class AT:
 			stage2 = check.stage2()
 			if stage2 == True or self.force == True:
 				self.checkRules()
-				self.openTrade()
+				if self.checkRules() == True:
+					self.openTrade()
+				else:
+					print("NO SE CUMPLEN LAS REGLAS DE TRADING")
 				self.monitor = True
 				mesARR = ["-"*60,
 					self.pair+" MONITOR",

@@ -18,13 +18,13 @@ client = Client(real_api_key,real_api_sec)
 dbName = "/var/www/html/Binance/master/binance.db"
 
 def Trading(request):
-	db = DB(dbName,client)
+	db = DB(dbName,client, request.GET["shift"])
 	a = db.getTRADINGdict()
 	d = {"syms": a}
 	return render(request, "trading.html", d)
 
 def Traded(request):
-	db = DB(dbName,client)
+	db = DB(dbName,client, request.GET["shift"])
 	a = db.getTRADEDdict()
 	assets = [{"name": "ETH", "good": 0, "bad": 0, "percGood": 0, "benefit": 0},
 				{"name": "BNB", "good": 0, "bad": 0, "percGood": 0, "benefit": 0}]
@@ -63,7 +63,7 @@ def Traded(request):
 	return render(request, "traded.html", d)
 
 def Stats(request):
-	db = DB(dbName,client)
+	db = DB(dbName,client, request.GET["shift"])
 	a = db.getTRADEDdict()
 	hourRange = ["Noche (00-08)","Mañana (08-16)","Tarde (16-00)"]
 	
@@ -161,7 +161,7 @@ def Graph(request):
 				include_plotlyjs=False,
 				config={"displayModeBar": False,
 						"autosizable": True})
-	db = DB(dbName,client)
+	db = DB(dbName,client, request.GET["shift"])
 	syms = db.getTRADINGdict()
 	symDATA = None
 	for i in syms:
