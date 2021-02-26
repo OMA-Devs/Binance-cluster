@@ -96,20 +96,6 @@ class DB:
 			d["percent"] = [7]
 			clean.append(d)
 		return clean
-	'''def getTRADING(self):
-		"""Obtiene los simbolos en trading activo. Atencion, SOLO
-		Returns:
-			List: Lista de simbolos en trading activo.
-		"""
-		db = sqlite3.connect(self.name, timeout=30)
-		cur = db.cursor()
-		cur.execute("SELECT symbol FROM trading")
-		symList = cur.fetchall()
-		db.close()
-		monitored = []
-		for i in symList:
-			monitored.append(i[0])
-		return monitored'''
 	def getTRADINGdict(self):
 		"""Obtiene una lista de diccionarios con la información de la tabla trading.
 
@@ -173,12 +159,6 @@ class DB:
 					buyable.append(sym)
 		#print(len(buyable))
 		return buyable
-	'''def getTRADED(self):
-		db = sqlite3.connect(self.name, timeout=30)
-		cur = db.cursor()
-		cur.execute("SELECT * FROM traded")
-		symList= cur.fetchall()
-		return symList'''
 	def getTRADEDdict(self):
 		db = sqlite3.connect(self.name, timeout=30)
 		cur = db.cursor()

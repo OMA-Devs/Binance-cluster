@@ -30,8 +30,6 @@ pools = {"True": [],
 		"False": []
 		}
 
-tradepool = []
-
 def inShift(startDT, endDT, nowDT):
 	if nowDT >= startDT and nowDT < endDT:
 		return True
@@ -165,7 +163,8 @@ def monitor(symbol, limit, stop, qty):
 						requests.exceptions.HTTPError,
 						requests.exceptions.ReadTimeout,
 						requests.exceptions.RetryError,
-						SSL.Error):
+						SSL.Error,
+						TypeError):
 					print("Error en peticion, continuando.")
 	except KeyboardInterrupt:
 		if debug == False:
