@@ -68,8 +68,15 @@ def Traded(request):
 def Stats(request):
 	db = DB(dbName,client, request.GET["shift"])
 	a = db.getTRADEDdict()
-	hourRange = ["Noche (00-08)","Mañana (08-16)","Tarde (16-00)"]
-	
+	###VARIABLES PARA EL GRAFICO DE PERDIDOS/GANADOS
+	hourRange = []
+	STAgoodBar = [] #Lista de ganadores
+	STAbadBar = [] #Lista de perdedores
+	for i in range(24):
+		hourRange.append(f"H{i}")
+		STAgoodBar.append(0)
+		STAbadBar.append(0)
+	################################################
 	##Deteccion de ganancia o perdida
 	for item in a:
 		evalPrice = Decimal(item["evalPrice"])
@@ -78,44 +85,13 @@ def Stats(request):
 			item["tradeEND"] = True
 		else:
 			item["tradeEND"] = False
-	##Creacion de grafico de ganacia perdida por comienzo y final de Trade
-	STAgoodBar = [0,0,0]
-	STAbadBar = [0,0,0]
-	ENDgoodBar = [0,0,0]
-	ENDbadBar = [0,0,0]
+	##Creacion de grafico de ganacia perdida por comienzo de Trade
 	for item in a:
 		STAhour = item["evalTS"].hour
-		ENDhour = item["endTS"].hour
-		if STAhour >= 0 and STAhour < 8:
-			if item["tradeEND"] == True:
-				STAgoodBar[0] = STAgoodBar[0]+1
-			else:
-				STAbadBar[0] = STAbadBar[0]+1
-		elif STAhour >= 8 and STAhour < 16:
-			if item["tradeEND"] == True:
-				STAgoodBar[1] = STAgoodBar[1]+1
-			else:
-				STAbadBar[1] = STAbadBar[1]+1
-		elif STAhour >= 16:
-			if item["tradeEND"] == True:
-				STAgoodBar[2] = STAgoodBar[2]+1
-			else:
-				STAbadBar[2] = STAbadBar[2]+1
-		if ENDhour >= 0 and ENDhour < 8:
-			if item["tradeEND"] == True:
-				ENDgoodBar[0] = ENDgoodBar[0]+1
-			else:
-				ENDbadBar[0] = ENDbadBar[0]+1
-		elif ENDhour >= 8 and ENDhour < 16:
-			if item["tradeEND"] == True:
-				ENDgoodBar[1] = ENDgoodBar[1]+1
-			else:
-				ENDbadBar[1] = ENDbadBar[1]+1
-		elif ENDhour >= 16:
-			if item["tradeEND"] == True:
-				ENDgoodBar[2] = ENDgoodBar[2]+1
-			else:
-				ENDbadBar[2] = ENDbadBar[2]+1
+		if item["tradeEND"] == True:
+			STAgoodBar[STAhour] = STAgoodBar[STAhour] + 1
+		else:
+			STAbadBar[STAhour] = STAbadBar[STAhour] + 1
 	perTradeStart = go.Figure(data=[
 		go.Bar(name="Ganados", x=hourRange, y=STAgoodBar),
 		go.Bar(name="Perdidos", x=hourRange, y=STAbadBar)])
@@ -124,17 +100,35 @@ def Stats(request):
 			include_plotlyjs=False,
 			config={"displayModeBar": False,
 					"autosizable": True})
-	perTradeEnd = go.Figure(data=[
-		go.Bar(name="Ganados", x=hourRange, y=ENDgoodBar),
-		go.Bar(name="Perdidos", x=hourRange, y=ENDbadBar)])
-	perTradeEnd.update_layout(barmode="group", title="Resultados agrupados por final del Trade")
-	endTSdiv = plot(perTradeEnd, output_type="div",
+	####
+	###VARIABLES PARA EL GRAFCO POR PARES
+	parList = []
+	winList = []
+	losList = []
+	for item in a:
+		try:
+			ind = parList.index(item["symbol"])
+		except ValueError:
+			parList.append(item["symbol"])
+			winList.append(0)
+			losList.append(0)
+			ind = parList.index(item["symbol"])
+		if item["tradeEND"] == True:
+			winList[ind] = winList[ind] + 1
+		else:
+			losList[ind] = losList[ind] + 1
+	###Grafico de trades por pares.
+	perPair = go.Figure(data=[
+		go.Bar(name="Ganados", x=winList, y=parList, orientation= "h"),
+		go.Bar(name="Perdidos", x=losList, y=parList, orientation="h")])
+	perPair.update_layout(barmode="group",title="Resultados agrupados por Pares",
+						height=3000)
+	perPairdiv = plot(perPair, output_type="div",
 			include_plotlyjs=False,
 			config={"displayModeBar": False,
 					"autosizable": True})
-	####
-	###Grafico de trades por pares.
-	d = {"perStartTS": startTSdiv, "perEndTS": endTSdiv}
+	###############################
+	d = {"perStartTS": startTSdiv, "perPair": perPairdiv}
 	return render(request, "stats.html", d)
 
 def Graph(request):
