@@ -492,7 +492,10 @@ if __name__ == "__main__":
 		shiftDelta = timedelta(hours=shiftHours)
 		dtNow = datetime.now()
 		if dtNow.hour >= config.startHour:
-			start = datetime(dtNow.year,dtNow.month,dtNow.day+1,config.startHour, 0,0,0)
+			try:
+				start = datetime(dtNow.year,dtNow.month,dtNow.day+1,config.startHour, 0,0,0)
+			except ValueError:
+				start = datetime(dtNow.year,dtNow.month+1,1,config.startHour, 0,0,0)
 		else:
 			start = datetime(dtNow.year,dtNow.month,dtNow.day,config.startHour,0,0,0)
 		try:
