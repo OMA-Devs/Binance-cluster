@@ -413,20 +413,21 @@ class AT:
 				self.checkRules()
 				if self.checkRules() == True:
 					self.openTrade()
+					self.monitor = True
+					mesARR = ["-"*60,
+						self.pair+" MONITOR",
+						str(datetime.now()),
+						"DAY min/med/max: "+ f"{self.minDay:{self.data['precision']}}"+" / "+f"{self.medDay:{self.data['precision']}}"+" / "+f"{self.maxDay:{self.data['precision']}}",
+						"Day grow: "+ str(self.growDay)+"%",
+						"Entrada:"+f"{act:{self.data['precision']}}",
+						"Limit: "+f"{((act/100)*self.limitPrice):{self.data['precision']}}",
+						"Stop: "+f"{((act/100)*self.stopPrice):{self.data['precision']}}"]
+					for line in self.min5grow:
+						mesARR.append("--: "+str(line)+"%")
+					logger(self.logName, mesARR)
 				else:
 					print("NO SE CUMPLEN LAS REGLAS DE TRADING")
-				self.monitor = True
-				mesARR = ["-"*60,
-					self.pair+" MONITOR",
-					str(datetime.now()),
-					"DAY min/med/max: "+ f"{self.minDay:{self.data['precision']}}"+" / "+f"{self.medDay:{self.data['precision']}}"+" / "+f"{self.maxDay:{self.data['precision']}}",
-					"Day grow: "+ str(self.growDay)+"%",
-					"Entrada:"+f"{act:{self.data['precision']}}",
-					"Limit: "+f"{((act/100)*self.limitPrice):{self.data['precision']}}",
-					"Stop: "+f"{((act/100)*self.stopPrice):{self.data['precision']}}"]
-				for line in self.min5grow:
-					mesARR.append("--: "+str(line)+"%")
-				logger(self.logName, mesARR)
+					self.monitor = False
 	def __init__(self, client, pair, min5Kline, force=False):
 		self.client = client
 		self.data = pair
