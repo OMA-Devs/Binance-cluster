@@ -30,7 +30,8 @@ def Traded(request):
 	db = DB(dbName,client, request.GET["shift"])
 	a = db.getTRADEDdict()
 	assets = [{"name": "ETH", "good": 0, "bad": 0, "percGood": 0, "benefit": 0},
-				{"name": "BNB", "good": 0, "bad": 0, "percGood": 0, "benefit": 0}]
+				{"name": "BNB", "good": 0, "bad": 0, "percGood": 0, "benefit": 0},
+				{"name": "BTC", "good": 0, "bad": 0, "percGood": 0, "benefit": 0}]
 	general = {"good": 0, "bad":0,"percGood":0, "duration": timedelta(seconds= 0)}
 	for item in a:
 		evalPrice = Decimal(item["evalPrice"])
@@ -45,8 +46,12 @@ def Traded(request):
 		general["duration"] = general["duration"] + item["duration"]
 
 	totTrades = general["good"]+general["bad"]
-	general["percGood"] = (general["good"]/totTrades)*100
-	general["duration"] = general["duration"]/totTrades
+	try:
+		general["percGood"] = (general["good"]/totTrades)*100
+		general["duration"] = general["duration"]/totTrades
+	except ZeroDivisionError:
+		general["percGood"] = 0
+		general["duration"] = 0
 
 	for asset in assets:
 		Lass = len(asset["name"])
