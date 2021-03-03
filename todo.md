@@ -29,3 +29,7 @@ Los trades reales se pueden ejecutar en turno, y el resto del tiempo se pueden s
 	3. __Comentario__: Efectivamente. He podido introducirlo como un argumento de instanciacion y el codigo queda increiblemente mas limpio.
 - [x] Django. ```data.views``` necesitará el rework correspondiente. ```display.views``` puede aprovecharse de nuevas caracteristicas.
 	1. __Comentario__: Muy facil de modificar tras darme cuenta de que "shift" podía ser un argumento de la instanciación.
+
+## Horarios dinámicos de trading.
+
+Ahora mismo ya esta implementada una funcion horaria en ```client.py``` pero esta se ejecuta durante un periodo de tiempo estipulado en el archivo de configuración y nada mas. Se pretende que el cliente obtenga los datos de la base de datos y determine los horarios de trading más efectivos, aunque estos se sucedan en horas salteadas.

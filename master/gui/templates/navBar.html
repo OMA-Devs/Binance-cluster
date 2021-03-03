@@ -16,10 +16,25 @@
 <body class="w3-container">
 <div class="w3-container w3-center"> 
 	<h1>Trading Management</h1>
-	<div class="w3-bar w3-center w3-card">
-		<a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=ALL">IntraDay Trading</a>
-		<a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=ALL">IntraDay Traded</a>
-    <a class="w3-bar-item w3-button" href="{% url 'Stats' %}?shift=ALL">IntraDay Stats</a>
+	<div class="w3-bar w3-center w3-card-4">
+  <div class="w3-dropdown-hover"></div>
+    <div class="w3-dropdown-hover">
+      <a class="w3-button">Scalper Trading</a>
+      <div class="w3-dropdown-content w3-bar-block w3-card-4">
+        <a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=True">In Shift</a>
+        <a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=False">Out Shift</a>
+        <a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=ALL">All</a>
+      </div>
+    </div>
+    <div class="w3-dropdown-hover">
+		  <a class="w3-button">Scalper Traded</a>
+      <div class="w3-dropdown-content w3-bar-block w3-card-4">
+        <a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=True">In Shift</a>
+        <a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=False">Out Shift</a>
+        <a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=ALL">All</a>
+      </div>
+    </div>
+    <a class="w3-bar-item w3-button" href="{% url 'Stats' %}?shift=ALL">Scalper Stats</a>
     <a class="w3-bar-item w3-button">Long Trading</a>
 		<a class="w3-bar-item w3-button">Options</a>
 	</div>

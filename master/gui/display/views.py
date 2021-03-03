@@ -47,7 +47,7 @@ def Traded(request):
 
 	totTrades = general["good"]+general["bad"]
 	try:
-		general["percGood"] = (general["good"]/totTrades)*100
+		general["percGood"] = f"{(general['good']/totTrades)*100:.2f}"
 		general["duration"] = general["duration"]/totTrades
 	except ZeroDivisionError:
 		general["percGood"] = 0
@@ -65,49 +65,51 @@ def Traded(request):
 				ben = soldAT-Decimal(item["assetQty"])
 				asset["benefit"] = asset["benefit"] + ben
 		totTrades = asset["good"]+asset["bad"]
-		asset["percGood"] = (asset["good"]/totTrades)*100
+		try:
+			asset["percGood"] = (asset["good"]/totTrades)*100
+		except ZeroDivisionError:
+			asset["percGood"] = 0
+		asset["percGood"] = f"{asset['percGood']:.2f}"
+		asset["benefit"] = f"{asset['benefit']:.8f}"
 
 	d = {"syms": a, "assets": assets, "general": general}
 	return render(request, "traded.html", d)
 
 def Stats(request):
 	db = DB(dbName,client, request.GET["shift"])
-	a = db.getTRADEDdict()
-	###VARIABLES PARA EL GRAFICO DE PERDIDOS/GANADOS
-	hourRange = []
-	STAgoodBar = [] #Lista de ganadores
-	STAbadBar = [] #Lista de perdedores
-	for i in range(24):
-		hourRange.append(f"H{i}")
-		STAgoodBar.append(0)
-		STAbadBar.append(0)
-	################################################
-	##Deteccion de ganancia o perdida
-	for item in a:
-		evalPrice = Decimal(item["evalPrice"])
-		endPrice = Decimal(item["sell"])
-		if endPrice > evalPrice:
-			item["tradeEND"] = True
-		else:
-			item["tradeEND"] = False
-	##Creacion de grafico de ganacia perdida por comienzo de Trade
-	for item in a:
-		STAhour = item["evalTS"].hour
-		if item["tradeEND"] == True:
-			STAgoodBar[STAhour] = STAgoodBar[STAhour] + 1
-		else:
-			STAbadBar[STAhour] = STAbadBar[STAhour] + 1
+	#####Grafico GENERAL
+	percs = db.getPercentage()
+	bestShift = db.getBestShift(60)
+	colors = ["orange",]*24
+	for i in bestShift["hour"]:
+		colors[int(i)] = "green"
 	perTradeStart = go.Figure(data=[
-		go.Bar(name="Ganados", x=hourRange, y=STAgoodBar),
-		go.Bar(name="Perdidos", x=hourRange, y=STAbadBar)])
-	perTradeStart.update_layout(barmode="group",title="Resultados agrupados por inicio del Trade")
+		go.Bar(name="Porcentaje", x=percs["hour"], y=percs["perc"], hovertext=percs["totals"], marker_color=colors)])
+	perTradeStart.update_layout(barmode="group",title="Efectividad general")
 	startTSdiv = plot(perTradeStart, output_type="div",
 			include_plotlyjs=False,
 			config={"displayModeBar": False,
 					"autosizable": True})
+	###Graficos de asset
+	assets = ["ETH","BNB","BTC"]
+	graphs = []
+	for asset in assets:
+		percs = db.getPercentage(asset=asset)
+		bestShift = db.getBestShift(60, asset=asset)
+		colors = ["orange",]*24
+		for i in bestShift["hour"]:
+			colors[int(i)] = "green"
+		TradeStart = go.Figure(data=[
+		go.Bar(name="Porcentaje", x=percs["hour"], y=percs["perc"], hovertext=percs["totals"], marker_color=colors)])
+		TradeStart.update_layout(barmode="group",title=f"Efectividad {asset}")
+		TSdiv = plot(TradeStart, output_type="div",
+				include_plotlyjs=False,
+				config={"displayModeBar": False,
+						"autosizable": True})
+		graphs.append(TSdiv)
 	####
 	###VARIABLES PARA EL GRAFCO POR PARES
-	parList = []
+	'''parList = []
 	winList = []
 	losList = []
 	for item in a:
@@ -131,9 +133,9 @@ def Stats(request):
 	perPairdiv = plot(perPair, output_type="div",
 			include_plotlyjs=False,
 			config={"displayModeBar": False,
-					"autosizable": True})
+					"autosizable": True})'''
 	###############################
-	d = {"perStartTS": startTSdiv, "perPair": perPairdiv}
+	d = {"perStartTS": startTSdiv, "graphs": graphs}
 	return render(request, "stats.html", d)
 
 def Graph(request):

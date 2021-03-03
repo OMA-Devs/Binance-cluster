@@ -3,6 +3,7 @@
 import sqlite3
 from binance.client import Client
 from datetime import datetime
+from decimal import Decimal
 
 class DB:
 	"""Clase que engloba todas las operaciones de base de datos. Se ha hecho necesaria ya que la modularización del programa está causando
@@ -19,6 +20,7 @@ class DB:
 			shift (str|bool): Para especificar en la conexion el campo shift de los trades o "ALL" para las busquedas generales.  
 		"""
 		self.name = name
+		self.testName = "/var/www/html/Binance/master/tests.db"
 		self.client = client
 		self.shift = str(shift)
 	def updateSymbols(self):
@@ -225,6 +227,83 @@ class DB:
 		cur.execute("DELETE FROM trading WHERE symbol = '"+sym+"' AND shift = '"+self.shift+"'")
 		db.commit()
 		db.close()
+	def getTRADEDhistoric(self):
+		db = sqlite3.connect(self.testName, timeout=30)
+		cur = db.cursor()
+		query = f"SELECT tableName from lookup"
+		cur.execute(query)
+		tables = cur.fetchall()
+		traded = []
+		for name in tables:
+			query = f"SELECT * from {name[0]}"
+			cur.execute(query)
+			symList = cur.fetchall()
+			for sym in symList:
+				d = {"symbol": sym[0],
+					"evalPrice": sym[1],
+					"stop": sym[2],
+					"limit": sym[3],
+					"sell": sym[4],
+					"assetQty": sym[5],
+					"baseQty": sym[6],
+					"evalTS": datetime.fromtimestamp(int(sym[7].split(".")[0])),
+					"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0])),
+					"shift": sym[9]}
+				traded.append(d)
+		db.close()
+		return traded
+	def getPercentage(self, asset="ALL"):
+		actual = self.getTRADEDdict()
+		historic = self.getTRADEDhistoric()
+		full = actual+historic
+
+		hourRange = []
+		STAgoodBar = [] #Lista de ganadores
+		STAbadBar = [] #Lista de perdedores
+		STApercBar = [] #Lista de porcentajes
+		STAtots = [] #Lista de trades totales
+		for i in range(24):
+			hourRange.append(f"{i}")
+			STAgoodBar.append(0)
+			STAbadBar.append(0)
+			STApercBar.append(0)
+			STAtots.append(0)
+		Lass = len(asset)
+		for item in full:
+			if asset == "ALL" or item["symbol"][Lass-Lass*2:] == asset:
+				evalPrice = Decimal(item["evalPrice"])
+				endPrice = Decimal(item["sell"])
+				if endPrice > evalPrice:
+					item["tradeEND"] = True
+				else:
+					item["tradeEND"] = False
+				STAhour = item["evalTS"].hour
+				if item["tradeEND"] == True:
+					STAgoodBar[STAhour] = STAgoodBar[STAhour] + 1
+				else:
+					STAbadBar[STAhour] = STAbadBar[STAhour] + 1
+		for i in range(24):
+			try:
+				tot = STAgoodBar[i]+STAbadBar[i]
+				STAtots[i] = tot
+				perc = (STAgoodBar[i]/tot)*100
+				STApercBar[i] = perc
+			except ZeroDivisionError:
+				STApercBar[i] = 0
+		'''print(f"-----\n|{asset}|\n-----")
+		for i in range(24):
+			if STApercBar[i] > 60:
+				print(f"{hourRange[i]}: {STApercBar[i]:.3f}| Trades: {STAgoodBar[i]+STAbadBar[i]}")'''
+		return {"hour":hourRange, "perc": STApercBar, "totals": STAtots}
+	def getBestShift(self,minPerc, asset="ALL"):
+		perc = self.getPercentage(asset)
+		hours = []
+		percs = []
+		for i in range(24):
+			if perc["perc"][i] >= minPerc:
+				hours.append(perc["hour"][i])
+				percs.append(perc["perc"][i])
+		return {"hour": hours, "perc": percs}
 
 if __name__ == "__main__":
 	from os import environ
@@ -234,5 +313,7 @@ if __name__ == "__main__":
 	real_api_sec = environ.get("BINANCE_API_SEC")
 	client = Client(real_api_key,real_api_sec)
 	db = DB("../binance.db", client, "ALL")
-	db.updateSymbols()
-	#db.tradeEND("EOSBNB", str(datetime.now()),"0.0000")
+	#db.updateSymbols()
+	for i in ["ALL","BTC","ETH","BNB"]:
+		db.getBestShift(60,asset=i)
+

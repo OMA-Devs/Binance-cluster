@@ -3,5 +3,7 @@
 
 {% block content %}
 {{perStartTS|safe}}
-{{perPair|safe}}
+{% for graph in graphs %}
+	{{graph|safe}}
+{% endfor %}
 {% endblock %}
