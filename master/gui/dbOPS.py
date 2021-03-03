@@ -313,7 +313,7 @@ if __name__ == "__main__":
 	real_api_sec = environ.get("BINANCE_API_SEC")
 	client = Client(real_api_key,real_api_sec)
 	db = DB("../binance.db", client, "ALL")
-	#db.updateSymbols()
-	for i in ["ALL","BTC","ETH","BNB"]:
-		db.getBestShift(60,asset=i)
+	db.updateSymbols()
+	'''for i in ["ALL","BTC","ETH","BNB"]:
+		db.getBestShift(60,asset=i)'''
 
