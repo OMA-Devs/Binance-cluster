@@ -491,12 +491,18 @@ if __name__ == "__main__":
 	shiftTimes = getBestShift(60, config.symbol)
 	dtStart = datetime.now()
 	shiftDelta = timedelta(days=1)
+	print(f"Proximos turnos a las:")
+	for h in shiftTimes["hour"]:
+		print(f"- {h}")
 	while True:
 		cleanPools()
 		dt = datetime.now()
 		if dt-dtStart >= shiftDelta:
 			dtStart = dtStart+shiftDelta
 			shiftTimes = getBestShift(60, config.symbol)
+			print(f"Proximos turnos a las:")
+			for h in shiftTimes["hour"]:
+				print(f"- {h}")
 		if str(dt.hour) in shiftTimes["hour"]:
 			shift = "True"
 			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
