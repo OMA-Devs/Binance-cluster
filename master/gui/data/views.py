@@ -53,3 +53,10 @@ def putTraded(request):
 	except OperationalError:
 		####COMPRUEBA LOS PERMISOS DE LA BASE DE DATOS!!!!
 		return HttpResponse(str(False))
+
+def getBestShift(request):
+	minPerc = request.GET["minPerc"]
+	asset = request.GET["asset"]
+	db = DB(dbName, client, "ALL")
+	bestShift = db.getBestShift(int(minPerc), asset=asset) 
+	return HttpResponse(json.dumps(bestShift))
