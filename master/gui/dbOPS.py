@@ -316,7 +316,7 @@ if __name__ == "__main__":
 	#db.updateSymbols()
 	for i in ["ALL","BTC","ETH","BNB"]:
 		print(i)
-		shift = db.getBestShift(60,asset=i)
+		shift = db.getBestShift(70,asset=i)
 		for ind,h in enumerate(shift["hour"]):
 			print(f"{h}: {shift['perc'][ind]:.2f}")
 

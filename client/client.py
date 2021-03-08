@@ -4,6 +4,7 @@ import requests
 from os import environ, system
 from sys import argv
 import config
+from config import debug
 from binance.client import Client
 from binance.enums import SIDE_SELL, TIME_IN_FORCE_GTC
 from datetime import datetime, timedelta
@@ -23,24 +24,14 @@ api_sec = environ.get("TEST_BINANCE_SEC")
 real_api_key = environ.get("BINANCE_API_KEY")
 real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
-debug = True
 shift = None
 
-pools = {"True": [],
-		"False": []
-		}
-
-def inShift(startDT, endDT, nowDT):
-	if nowDT >= startDT and nowDT < endDT:
-		return True
-	else:
-		return False
+tradepool = []
 
 def cleanPools():
-	for poolName in pools:
-		for ind, j in enumerate(pools[poolName]):
-			if j.is_alive() == False:
-				pools[poolName].pop(ind)
+	for ind,j in enumerate(tradepool):
+		if j.is_alive() == False:
+			tradepool.pop(ind)
 
 def logger(logName, mesARR):
 	"""Funcion de logging para simplificar los logs del sistema.
@@ -63,6 +54,25 @@ def logger(logName, mesARR):
 			pass
 	f.close()
 
+def getBestShift(minPerc, asset):
+	payload = {"minPerc": str(minPerc),
+				"asset": config.symbol}
+	r = requests.get('http://'+config.masterIP+'/data/getBestShift?', params=payload)
+	text = r.text
+	try:
+		final = literal_eval(text)
+		return final
+	except SyntaxError:
+		print("No se puede obtener turno de masterNode. Solicitando de nuevo.")
+		while True:
+			r = requests.get('http://'+config.masterIP+'/data/getBestShift?', params=payload)
+			text = r.text
+			try:
+				final = literal_eval(text)
+				return final
+			except SyntaxError:
+				print("No se puede obtener turno de masterNode. Solicitando de nuevo.")
+
 def getTradeable():
 	"""Hace una llamada al servidor maestro para obtener una lista de diccionario de todos los
 	pares que se pueden tradear. El servidor se encarga de excluir los pares que ya estan en
@@ -83,7 +93,7 @@ def getTradeable():
 		final = literal_eval(text)
 		return final
 	except SyntaxError:
-		print("Sin respuesta de masterNode. Solicitando de nuevo.")
+		print("No se puede obtener lista de trading de masterNode. Solicitando de nuevo.")
 		return []
 
 def putTrading(sym, prices, qtys):
@@ -107,11 +117,11 @@ def putTrading(sym, prices, qtys):
 	r = requests.get("http://"+config.masterIP+"/data/putTrading?",params= payload)
 	response = r.text
 	if literal_eval(response) == True:
-		print("Trade enviado a masterNode")
+		print(f"{sym}: Apertura de trade enviada a masterNode")
 	else:
-		print("Trade no recibido en masterNode")
+		print(f"{sym}: Apertura de trade no recibida en masterNode")
 
-def putTraded(sym, closePrice):
+def putTraded(sym, closePrice, tradeShift):
 	"""Funcion que genera el request necesario para cerrar un trade en la base de datos del servidor.
 
 	Args:
@@ -122,7 +132,7 @@ def putTraded(sym, closePrice):
 	payload = {"sym": sym,
 				"endTS": ts,
 				"sellPrice": closePrice,
-				"shift": str(shift)
+				"shift": str(tradeShift)
 				}
 	r = requests.get("http://"+config.masterIP+"/data/putTraded?",params= payload)
 	response = r.text
@@ -144,6 +154,7 @@ def monitor(symbol, limit, stop, qty):
 	"""
 	tick = timedelta(seconds=2)
 	tnow = datetime.now()
+	tradeShift = shift
 	try:
 		while True:
 			now = datetime.now()
@@ -156,7 +167,7 @@ def monitor(symbol, limit, stop, qty):
 						if debug == False:
 							client.order_market_sell(symbol=symbol, quantity=qty)
 						print(f"{shift}: {symbol}- Trade cerrado en: {act:.8f}")
-						putTraded(symbol, f"{act:.8f}")
+						putTraded(symbol, f"{act:.8f}",tradeShift)
 						break
 				except (requests.exceptions.ConnectionError,
 						requests.exceptions.ConnectTimeout,
@@ -165,12 +176,12 @@ def monitor(symbol, limit, stop, qty):
 						requests.exceptions.RetryError,
 						SSL.Error,
 						TypeError):
-					print("Error en peticion, continuando.")
+					print(f"{symbol}: Error en peticion, continuando.")
 	except KeyboardInterrupt:
 		if debug == False:
 			client.order_market_sell(symbol=symbol, quantity=qty)
-		print(f"{shift}: {symbol}- Trade cerrado manualmente")
-		putTraded(symbol, f"{act:.8f}")
+		print(f"{tradeShift}: {symbol}- Trade cerrado manualmente")
+		putTraded(symbol, f"{act:.8f}",tradeShift)
 
 class Checker:
 	"""Antigua clase ALGO. Esta clase engloba las comprobaciones de los
@@ -469,7 +480,7 @@ class AT:
 											Decimal((self.qtys["evalPrice"]/100)*self.limitPrice),
 											Decimal((self.qtys["evalPrice"]/100)*self.stopPrice),
 											str(self.qtys["baseQty"]),),
-										name= self.pair)
+										name= f"{shift}: {self.pair}")
 			mon.daemon = True
 			tradepool.append(mon)
 			mon.start()
@@ -477,39 +488,23 @@ class AT:
 
 if __name__ == "__main__":
 	print(title)
-	shiftDelta = None
-	start = None
-	endDelta = None
-	if config.startHour == config.endHour:
-		start = datetime.now()+timedelta(minutes=5)
-		endDelta = start+timedelta(hours=24)
-		shiftDelta = timedelta(hours=24)
-	else:
-		shiftHours = config.startHour-config.endHour
-		if shiftHours < 0:
-			shiftHours = shiftHours+(shiftHours*-2)
-		else:
-			pass
-		shiftDelta = timedelta(hours=shiftHours)
-		dtNow = datetime.now()
-		if dtNow.hour >= config.startHour:
-			try:
-				start = datetime(dtNow.year,dtNow.month,dtNow.day+1,config.startHour, 0,0,0)
-			except ValueError:
-				start = datetime(dtNow.year,dtNow.month+1,1,config.startHour, 0,0,0)
-		else:
-			start = datetime(dtNow.year,dtNow.month,dtNow.day,config.startHour,0,0,0)
-		try:
-			endDelta = start+shiftDelta
-		except TypeError:
-			endDelta = dtNow+timedelta(hours=24)
-	print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-dtNow}")
+	shiftTimes = getBestShift(75, config.symbol)
+	dtStart = datetime.now()
+	shiftDelta = timedelta(days=1)
+	print(f"Proximos turnos a las:")
+	for h in shiftTimes["hour"]:
+		print(f"- {h}")
 	while True:
 		cleanPools()
 		dt = datetime.now()
-		if inShift(start, endDelta, dt) == True:
+		if dt-dtStart >= shiftDelta:
+			dtStart = dtStart+shiftDelta
+			shiftTimes = getBestShift(75, config.symbol)
+			print(f"Proximos turnos a las:")
+			for h in shiftTimes["hour"]:
+				print(f"- {h}")
+		if str(dt.hour) in shiftTimes["hour"]:
 			shift = "True"
-			tradepool = pools["True"]
 			print("Comenzando comprobacion "+config.symbol+": "+str(datetime.now()))
 			if len(tradepool) > 0:
 				print("Trades Abiertos:")
@@ -517,14 +512,6 @@ if __name__ == "__main__":
 					print("- "+ j.name)
 		else:
 			shift = "False"
-			tradepool = pools["False"]
-			if (dt >= endDelta):
-				start = start+timedelta(hours=24)
-				endDelta = start+shiftDelta
-				print(title)
-				print(f"Inicio/Final: {start}/{endDelta} \nProximo turno en: {start-datetime.now()}")
-			elif (dt < start):
-				pass
 		try:
 			tradeable = getTradeable()
 			for sym in tradeable:

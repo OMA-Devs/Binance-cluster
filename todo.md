@@ -33,3 +33,5 @@ Los trades reales se pueden ejecutar en turno, y el resto del tiempo se pueden s
 ## Horarios dinámicos de trading.
 
 Ahora mismo ya esta implementada una funcion horaria en ```client.py``` pero esta se ejecuta durante un periodo de tiempo estipulado en el archivo de configuración y nada mas. Se pretende que el cliente obtenga los datos de la base de datos y determine los horarios de trading más efectivos, aunque estos se sucedan en horas salteadas.
+
+Ha sido muy facil implementarlo. Incluso ha limpiado el codigo del cliente.
