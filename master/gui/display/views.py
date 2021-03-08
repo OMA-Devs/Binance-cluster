@@ -140,7 +140,12 @@ def Stats(request):
 
 def Graph(request):
 	sym = request.GET["sym"]
-	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_1HOUR, "1 day ago UTC")
+	evalTS = request.GET["evalTS"]
+	endTS = request.GET["endTS"]
+	evalPrice = request.GET["evalPrice"]
+	stopPrice = request.GET["stopPrice"]
+	limitPrice = request.GET["limitPrice"]
+	kline = client.get_historical_klines(sym, Client.KLINE_INTERVAL_5MINUTE, evalTS, endTS)
 	df = {"Date":[],
 		"Open": [],
 		"High": [],
@@ -152,7 +157,8 @@ def Graph(request):
 		df["High"].append(line[2])
 		df["Low"].append(line[3])
 		df["Close"].append(line[4])
-	fig = go.Figure(data=[go.Candlestick(x=df['Date'],
+	fig = go.Figure(data=[
+		go.Candlestick(x=df['Date'],
 				open=df['Open'],
 				high=df['High'],
 				low=df['Low'],
@@ -165,11 +171,11 @@ def Graph(request):
 				include_plotlyjs=False,
 				config={"displayModeBar": False,
 						"autosizable": True})
-	db = DB(dbName,client, request.GET["shift"])
-	syms = db.getTRADINGdict()
-	symDATA = None
-	for i in syms:
-		if i["symbol"] == sym:
-			symDATA = i
-	d = {"sym": sym, "graph": div, "data": symDATA}
+	#db = DB(dbName,client, request.GET["shift"])
+	#syms = db.getTRADINGdict()
+	#symDATA = None
+	#for i in syms:
+	#	if i["symbol"] == sym:
+	#		symDATA = i
+	d = {"sym": sym, "graph": div, "evalTS": evalTS, "endTS": endTS}
 	return render(request, "graphView.html", d)
