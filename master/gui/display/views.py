@@ -79,7 +79,7 @@ def Stats(request):
 	db = DB(dbName,client, request.GET["shift"])
 	#####Grafico GENERAL
 	percs = db.getPercentage()
-	bestShift = db.getBestShift(75)
+	bestShift = db.getBestShift(66)
 	colors = ["orange",]*24
 	for i in bestShift["hour"]:
 		colors[int(i)] = "green"
@@ -95,7 +95,7 @@ def Stats(request):
 	graphs = []
 	for asset in assets:
 		percs = db.getPercentage(asset=asset)
-		bestShift = db.getBestShift(60, asset=asset)
+		bestShift = db.getBestShift(66, asset=asset)
 		colors = ["orange",]*24
 		for i in bestShift["hour"]:
 			colors[int(i)] = "green"

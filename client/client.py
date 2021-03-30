@@ -488,7 +488,7 @@ class AT:
 
 if __name__ == "__main__":
 	print(title)
-	shiftTimes = getBestShift(75, config.symbol)
+	shiftTimes = getBestShift(66, config.symbol)
 	dtStart = datetime.now()
 	shiftDelta = timedelta(days=1)
 	print(f"Proximos turnos a las:")
@@ -499,7 +499,7 @@ if __name__ == "__main__":
 		dt = datetime.now()
 		if dt-dtStart >= shiftDelta:
 			dtStart = dtStart+shiftDelta
-			shiftTimes = getBestShift(75, config.symbol)
+			shiftTimes = getBestShift(66, config.symbol)
 			print(f"Proximos turnos a las:")
 			for h in shiftTimes["hour"]:
 				print(f"- {h}")
