@@ -394,7 +394,7 @@ class AT:
 		bal = self.client.get_asset_balance(config.symbol)
 		if Decimal(bal['free']) > Decimal(self.qtys["assetQty"]):
 			msg.append("Ejecutando Orden de compra")
-			if debug == False:
+			if debug == False or shift == "True":
 				self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
 			else:
 				pass
