@@ -164,7 +164,7 @@ def monitor(symbol, limit, stop, qty):
 					act = Decimal(client.get_symbol_ticker(symbol=symbol)["price"])
 					#print(f"{symbol}: {act}")
 					if act >= limit or act <= stop:
-						if debug == False:
+						if debug == False and shift == "True":
 							client.order_market_sell(symbol=symbol, quantity=qty)
 						print(f"{shift}: {symbol}- Trade cerrado en: {act:.8f}")
 						putTraded(symbol, f"{act:.8f}",tradeShift)
@@ -394,7 +394,7 @@ class AT:
 		bal = self.client.get_asset_balance(config.symbol)
 		if Decimal(bal['free']) > Decimal(self.qtys["assetQty"]):
 			msg.append("Ejecutando Orden de compra")
-			if debug == False or shift == "True":
+			if debug == False and shift == "True":
 				self.client.order_market_buy(symbol=self.pair, quantity=self.qtys["baseQty"])
 			else:
 				pass
