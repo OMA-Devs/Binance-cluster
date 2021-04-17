@@ -4,6 +4,8 @@ import sqlite3
 from binance.client import Client
 from datetime import datetime
 from decimal import Decimal
+import mariadb
+import dateparser
 
 class DB:
 	"""Clase que engloba todas las operaciones de base de datos. Se ha hecho necesaria ya que la modularización del programa está causando
@@ -23,7 +25,7 @@ class DB:
 		self.testName = "/var/www/html/Binance/master/tests.db"
 		self.client = client
 		self.shift = str(shift)
-	def updateSymbols(self):
+	def updateSymbols(self): #
 		"""Borra y reescribe completamente la tabla de simbolos en la base de datos
 		"""
 		old = self.getSymbols() #Lista actual de simbolos
@@ -70,7 +72,7 @@ class DB:
 		db.close()
 		print("Symbol Database Fully Updated")
 		print("- DIFF: "+str(diff))
-	def getSymbols(self):
+	def getSymbols(self): #
 		"""Obtiene una lista de pares limpia de la base de datos.
 		Requiere tratamiento porque la base de datos devuelve tuplas.
 		El tratamiento convierte las tuplas en diccionarios de mas facil utilización.
@@ -249,9 +251,153 @@ class DB:
 					"evalTS": datetime.fromtimestamp(int(sym[7].split(".")[0])),
 					"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0])),
 					"shift": sym[9]}
+				evalPrice = Decimal(d["evalPrice"])
+				endPrice = Decimal(d["sell"])
+				if endPrice > evalPrice:
+					d["tradeEND"] = True
+				else:
+					d["tradeEND"] = False
 				traded.append(d)
 		db.close()
 		return traded
+	'''def getDetailTRADEDhistoric(self): ##########PRUEBA, SIN USO
+		db = sqlite3.connect(self.testName, timeout=30)
+		cur = db.cursor()
+		query = f"SELECT tableName from lookup"
+		cur.execute(query)
+		tables = cur.fetchall()
+		tablesCURED = []
+		for name in tables:
+			table = {"Name": name[0]}
+			query = f"SELECT * from {name[0]}"
+			cur.execute(query)
+			symList = cur.fetchall()
+			table["trades"] = []
+			for sym in symList:
+				d = {"symbol": sym[0],
+					"evalPrice": sym[1],
+					"stop": sym[2],
+					"limit": sym[3],
+					"sell": sym[4],
+					"assetQty": sym[5],
+					"baseQty": sym[6],
+					"evalTS": datetime.fromtimestamp(int(sym[7].split(".")[0])),
+					"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0])),
+					"shift": sym[9]}
+	 			table["trades"].append(d)
+			tablesCURED.append(table)
+		db.close()
+		for table in tablesCURED:
+			table["Start"] = table["trades"][0]["evalTS"]
+			table["End"] = table["trades"][-1]["endTS"]
+			table["Duration"] = table["End"]-table["Start"]
+
+		for table in tablesCURED:
+			print(f"---{table['Name']}---\nInicio: {table['Start']}\nFinal: {table['End']}\nDuracion: {table['Duration']}\nN.Trades: {len(table['trades'])}")
+		return tablesCURED'''
+	def getEFperDay(self, asset="ALL"):
+		##DEMASIADO LARGA. HAY QUE FACTORIZAR. ES MALA CON GANAS
+		db = sqlite3.connect(self.testName, timeout=30)
+		cur = db.cursor()
+		query = f"SELECT tableName from lookup"
+		cur.execute(query)
+		tables = cur.fetchall()
+		days = {}
+		Lass = len(asset)
+		for name in tables:
+			query = f"SELECT * from {name[0]}"
+			cur.execute(query)
+			symList = cur.fetchall()
+			db.close()
+			for sym in symList:
+				if asset == "ALL" or sym[0][Lass-Lass*2:] == asset:
+					d = {"symbol": sym[0],
+						"evalPrice": sym[1],
+						"stop": sym[2],
+						"limit": sym[3],
+						"sell": sym[4],
+						"assetQty": sym[5],
+						"baseQty": sym[6],
+						"evalTS": datetime.fromtimestamp(int(sym[7].split(".")[0])),
+						"endTS": datetime.fromtimestamp(int(sym[8].split(".")[0])),
+						"shift": sym[9]}
+					monthday = f'{d["evalTS"].month}/{d["evalTS"].day}'
+					try:
+						days[monthday].append(d)
+					except KeyError:
+						days[monthday] = [d]
+		daysCURED = {}
+		for key in days:
+			TOT = len(days[key])
+			GOOD = 0
+			BAD = 0
+			for item in days[key]:
+				evalPrice = Decimal(item["evalPrice"])
+				endPrice = Decimal(item["sell"])
+				if endPrice > evalPrice:
+					item["tradeEND"] = True
+					GOOD = GOOD +1
+				else:
+					item["tradeEND"] = False
+					BAD = BAD +1
+			perc = (GOOD/TOT)*100
+			daysCURED[key] = {"total": TOT, "good": GOOD, "bad": BAD, "perc": perc}
+			percDays = {"day": [], "total": [], "good": [], "bad": [], "perc": [],"grow":[], "co": [],"text": []}
+		for key in daysCURED:
+			percDays["day"].append(key)
+			percDays["total"].append(daysCURED[key]["total"])
+			percDays["good"].append(daysCURED[key]["good"])
+			percDays["bad"].append(daysCURED[key]["bad"])
+			percDays["perc"].append(daysCURED[key]["perc"])
+		assetRAWData = self.client.get_historical_klines(asset+"EUR", Client.KLINE_INTERVAL_1DAY, percDays["day"][0])
+		assetData = {"day":[], "grow": []}
+		for i in assetRAWData:
+				fechaDT = datetime.fromtimestamp(int(i[0])/1000)
+				fechaSTR = f'{fechaDT.month}/{fechaDT.day}'
+				if fechaSTR in percDays["day"]:
+					assetData["day"].append(fechaSTR)
+					op = Decimal(i[1])
+					cl = Decimal(i[4])
+					perc = round((cl-op)/op*100,3)
+					percDays["grow"].append(perc)
+		for i in range(len(percDays["day"])):
+			try:
+				co = Decimal(percDays["grow"][i])/Decimal(percDays["perc"][i]) #COEFICIENTE DE CORRELACION CON EL PRECIO BASE
+			except ZeroDivisionError:
+				co = Decimal("0.3")
+			percDays["co"].append(co)
+			percDays["text"].append(f'Efectividad: {percDays["perc"][i]:.3f} || Crecimiento: {percDays["grow"][i]:.3f}|| Total: {percDays["total"][i]:.3f}')
+
+		'''for i in range(len(percDays["day"])):
+			#print(percDays["co"][i]== Decimal("0.04"))
+			#if Decimal(percDays["co"][i]) <= Decimal("0.030") and Decimal(percDays["co"][i]) >= Decimal("-0.030"):
+			print(f'DB: {percDays["day"][i]}||GROW: {percDays["grow"][i]}||EF: {percDays["perc"][i]:.3f}||CO: {percDays["co"][i]:.3f}')'''
+		return percDays
+	def getMostProficent(self, asset="ALL"):
+		historic = db.getTRADEDhistoric()
+		actual = db.getTRADEDdict()
+		full = historic+actual
+		pairDict = {}
+		for item in full:
+			try:
+				pairDict[item["symbol"]]
+			except KeyError:
+				pairDict[item["symbol"]]= {}
+			if item["tradeEND"] == True:
+				pairDict[item["symbol"]]["good"] = 1
+				pairDict[item["symbol"]]["bad"] = 0
+			else:
+				pairDict[item["symbol"]]["good"] = 0
+				pairDict[item["symbol"]]["bad"] = 1
+			if item["tradeEND"] == True:
+				pairDict[item["symbol"]]["good"] = pairDict[item["symbol"]]["good"] + 1
+			else:
+				pairDict[item["symbol"]]["bad"] = pairDict[item["symbol"]]["bad"] + 1
+		for pair in pairDict:
+			pairOb = pairDict[pair]
+			pairOb["total"] = pairOb["good"]+pairOb["bad"] 
+			pairOb["efec"] = (pairOb["good"]/pairOb["total"])*100
+			print(pairOb)
 	def getPercentage(self, asset="ALL"):
 		actual = self.getTRADEDdict()
 		historic = self.getTRADEDhistoric()
@@ -305,6 +451,266 @@ class DB:
 				percs.append(perc["perc"][i])
 		return {"hour": hours, "perc": percs}
 
+
+class DB1:
+	def __init__(self, client, shift="ALL"):
+		self.user = "binance"
+		self.password = "admin"
+		self.host = "localhost"
+		self.port = 3306
+		self.database = "binance"
+		self.client = client
+		self.shift = shift
+	def getSymbols(self):
+		"""Obtiene una lista de pares limpia de la base de datos.
+		Requiere tratamiento porque la base de datos devuelve tuplas.
+		El tratamiento convierte las tuplas en diccionarios de mas facil utilización.
+
+		Returns:
+			[List]: Lista con todos los simbolos en formato diccionario y sus
+			reglas de trading.
+		"""
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		cur.execute("SELECT * FROM symbols")
+		clean = []
+		#Itera sobre la lista obtenida de la base de datos y convierte las tuplas de un solo elemento en cadenas.
+		for i in cur:
+			d = {}
+			d["symbol"] = i[0]
+			d["minNotional"] = i[1]
+			d["minQty"] = i[2]
+			d["stepSize"] = i[3]
+			d["precision"] = i[4]
+			d["acierto"] = i[5]
+			d["total"] = i[6]
+			d["percent"] = i[7]
+			d["1S"] = i[8]
+			d["1M"] = i[9]
+			#print(d)
+			clean.append(d)
+		conn.close()
+		return clean
+	def updateSymbols(self):
+		symDict = self.getSymbols()
+		exchDict = self.client.get_exchange_info()["symbols"]
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		#######DELISTED LOOP######
+		delisted = []
+		for sym in symDict:
+			inList = False
+			for ex in exchDict:
+				if sym["symbol"] == ex["symbol"]:
+					inList = True
+			if inList == False:
+				delisted.append(sym["symbol"])
+				st = f"DELETE FROM symbols WHERE symbol='{sym['symbol']}'"
+				cur.execute(st)
+		#############################
+		#######NEWLISTED LOOP########
+		newlisted = []
+		for sym in exchDict:
+			inList = False
+			for ex in symDict:
+				if ex["symbol"] == sym["symbol"]:
+					inList = True
+			if inList == False:
+				newlisted.append(sym["symbol"])
+				minNotional = "-"
+				minQty = "-"
+				stepSize = "-"
+				precision = "-"
+				acierto = "0"
+				total = "0"
+				percent = "0"
+				s1 = "0"
+				m1 = "0"
+				for filt in sym["filters"]:
+					if filt["filterType"] == "MIN_NOTIONAL":
+						minNotional = filt["minNotional"]
+					elif filt["filterType"] == "LOT_SIZE":
+						minQty = filt["minQty"]
+						stepSize = filt["stepSize"]
+				try:
+					precision = sym["baseAssetPrecision"]
+				except KeyError:
+					pass
+				queryARR = ["'"+sym["symbol"]+"'",
+							"'"+minNotional+"'",
+							"'"+minQty+"'",
+							"'"+stepSize+"'",
+							"'"+str(precision)+"'",
+							"'"+acierto+"'",
+							"'"+total+"'",
+							"'"+percent+"'",
+							"'"+s1+"'",
+							"'"+m1+"'"]
+				querySTR = ",".join(queryARR)
+				st = f"INSERT INTO symbols VALUES({querySTR})"
+				#print(st)
+				cur.execute(st)
+				conn.commit()
+		#############################
+		########UPDATE PERCENTS######
+		symDict = self.getSymbols()
+		for sym in symDict:
+			trades = self.getPairHistoric("scalper", pair= sym["symbol"])
+			if len(trades)>0:
+				aciertos = 0
+				total = 0
+				for trade in trades:
+					total = total + 1
+					if Decimal(trade["sellPrice"]) > Decimal(trade["evalPrice"]):
+						aciertos = aciertos + 1
+				perc = (aciertos/total)*100
+				st = f"UPDATE symbols SET acierto = '{aciertos}', total = '{total}', percent = '{perc}' WHERE symbol = '{sym['symbol']}' "
+				cur.execute(st)
+				conn.commit()
+		#################################
+		conn.close()
+		st = ""
+		for i in delisted:
+			st = st+f"{i}\n"
+		print(st)
+		print("FUERA:")
+		st = ""
+		for i in newlisted:
+			st = st+f"{i}\n"
+		print("NUEVOS:")
+		print(st)
+	def getPairHistoric(self, cliType,pair = "ALL", start = "FIRST", end = "LAST"):
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		st = ""
+		startTS = 0
+		endTS = 0
+		if start == "FIRST":
+			startTS = 0
+		else:
+			startTS = datetime.timestamp(dateparser.parse(start))
+		if end == "LAST":
+			endTS = 999999999999
+		else:
+			endTS = datetime.timestamp(dateparser.parse(end))
+		if pair == "ALL":
+			st = f"SELECT * FROM {cliType}_historic, {cliType}_traded WHERE evalTS > {startTS} AND evalTS < {endTS}"
+		else:
+			st = f"SELECT * FROM {cliType}_historic, {cliType}_traded WHERE symbol='{pair}' AND evalTS > {startTS} AND evalTS < {endTS}"
+		cur.execute(st)
+		historic = []
+		for trade in cur:
+			d = {"_tradeID": trade[0],
+				"symbol": trade[1],
+				"evalPrice": trade[2],
+				"stopPrice": trade[3],
+				"limitPrice": trade[4],
+				"sellPrice": trade[5],
+				"assetQty": trade[6],
+				"baseQty": trade[7],
+				"evalTS": trade[8],
+				"endTS": trade[9],
+				"shift": trade[10]}
+			historic.append(d)
+		conn.close()
+		return historic
+	def getAssetHistoric(self, cliType, asset = "ALL", start = "FIRST", end = "LAST"):
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		st = ""
+		startTS = 0
+		endTS = 0
+		if start == "FIRST":
+			startTS = 0
+		else:
+			startTS = datetime.timestamp(dateparser.parse(start))
+		if end == "LAST":
+			endTS = 999999999999
+		else:
+			endTS = datetime.timestamp(dateparser.parse(end))
+		if asset == "ALL":
+			st = f"SELECT * FROM {cliType}_historic, {cliType}_traded"
+		else:
+			st = f"SELECT * FROM {cliType}_historic WHERE symbol LIKE '%{asset}' AND evalTS > {startTS} AND evalTS < {endTS}"
+		cur.execute(st)
+		historic = []
+		for trade in cur:
+			d = {"_tradeID": trade[0],
+				"symbol": trade[1],
+				"evalPrice": trade[2],
+				"stopPrice": trade[3],
+				"limitPrice": trade[4],
+				"sellPrice": trade[5],
+				"assetQty": trade[6],
+				"baseQty": trade[7],
+				"evalTS": trade[8],
+				"endTS": trade[9],
+				"shift": trade[10]}
+			historic.append(d)
+		conn.close()
+		return historic
+	def getEFperHour(self, cliType, asset = "ALL", start = "FIRST", end = "LAST"):
+		history = self.getAssetHistoric(cliType, asset= asset, start= start, end= end)
+		d = {"hour":[], "perc":[], "acierto": [], "total":[]}
+		for i in range(24):
+			d["hour"].append(f"{i}")
+			d["perc"].append(0)
+			d["acierto"].append(0)
+			d["total"].append(0)
+		for trade in history:
+			evalPrice = Decimal(trade["evalPrice"])
+			endPrice = Decimal(trade["sellPrice"])
+			if endPrice > evalPrice:
+				trade["tradeEND"] = True
+			else:
+				trade["tradeEND"] = False
+			STAhour = datetime.fromtimestamp(Decimal(trade["evalTS"])).hour
+			d["total"][STAhour] = d["total"][STAhour] + 1
+			if trade["tradeEND"] == True:
+				d["acierto"][STAhour] = d["acierto"][STAhour] + 1
+		for i in range(24):
+			d["perc"][i] = (Decimal(d["acierto"][i])/Decimal(d["total"][i]))*100
+		for key in d:
+			print(d[key])
+			print("")			
+
+
 if __name__ == "__main__":
 	from os import environ
 	api_key = environ.get("TEST_BINANCE_API")
@@ -313,10 +719,14 @@ if __name__ == "__main__":
 	real_api_sec = environ.get("BINANCE_API_SEC")
 	client = Client(real_api_key,real_api_sec)
 	db = DB("../binance.db", client, "ALL")
-	db.updateSymbols()
+	##db.updateSymbols()
 	'''for i in ["ALL","BTC","ETH","BNB"]:
 		print(i)
-		shift = db.getBestShift(70,asset=i)
+		shift = db.getBestShift(65,asset=i)
 		for ind,h in enumerate(shift["hour"]):
 			print(f"{h}: {shift['perc'][ind]:.2f}")'''
+	#db.getMostProficent()
+	#db.getCorrelation(assets="ETH")
+	db1 = DB1(client)
+	db1.getEFperHour("scalper",asset="BTC")
 

@@ -16,6 +16,7 @@ real_api_key = environ.get("BINANCE_API_KEY")
 real_api_sec = environ.get("BINANCE_API_SEC")
 client = Client(real_api_key,real_api_sec)
 dbName = "/var/www/html/Binance/master/binance.db"
+assets = ["ETH", "BNB", "BTC"]
 
 def index(request):
 	return render(request, "index.html")
@@ -74,6 +75,25 @@ def Traded(request):
 
 	d = {"syms": a, "assets": assets, "general": general}
 	return render(request, "traded.html", d)
+
+def Efectivity(request):
+	db = DB(dbName,client, request.GET["shift"])
+	##Efectividad por dia/asset
+	graphs = []
+	data = db.getEFperDay(asset=request.GET["asset"])
+	colors = ["orange",]*len(data["day"])
+	for i in range(len(data["day"])):
+		if Decimal(data["perc"][i]) <= Decimal("100") and Decimal(data["perc"][i]) >= Decimal("65"):
+			colors[i] = "green"
+	graph = go.Figure(data=[go.Scatter(x=data["day"], y=data["co"], hovertext=data["text"], mode="markers",marker_color=colors)])
+	graph.update_layout(title="Efectividad general diaria "+request.GET["asset"])
+	graphDIV = plot(graph, output_type="div",
+			include_plotlyjs=False,
+			config={"displayModeBar": False,
+				"autosizable": True})
+	graphs.append(graphDIV)
+	d = {"graphs": graphs}
+	return render(request, "efectivity.html", d)
 
 def Stats(request):
 	db = DB(dbName,client, request.GET["shift"])

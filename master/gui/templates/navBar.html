@@ -8,38 +8,74 @@
   <title>Trading Management (Alpha)</title>
   <meta name="description" content="Trading Management">
   <meta name="author" content="Oma-Devs">
-  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <!--<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">-->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css">
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
-
-<body class="w3-container">
-<div class="w3-container w3-center"> 
+<body>
+<div class="jumbotron text-center"> 
 	<h1>Trading Management</h1>
-	<div class="w3-bar w3-center w3-card-4">
-  <div class="w3-dropdown-hover"></div>
-    <div class="w3-dropdown-hover">
-      <a class="w3-button">Scalper Trading</a>
-      <div class="w3-dropdown-content w3-bar-block w3-card-4">
-        <a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=True">In Shift</a>
-        <a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=False">Out Shift</a>
-        <a class="w3-bar-item w3-button" href="{% url 'Trading' %}?shift=ALL">All</a>
-      </div>
-    </div>
-    <div class="w3-dropdown-hover">
-		  <a class="w3-button">Scalper Traded</a>
-      <div class="w3-dropdown-content w3-bar-block w3-card-4">
-        <a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=True">In Shift</a>
-        <a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=False">Out Shift</a>
-        <a class="w3-bar-item w3-button" href="{% url 'Traded' %}?shift=ALL">All</a>
-      </div>
-    </div>
-    <a class="w3-bar-item w3-button" href="{% url 'Stats' %}?shift=ALL">Scalper Stats</a>
-    <a class="w3-bar-item w3-button">Long Trading</a>
-		<a class="w3-bar-item w3-button">Options</a>
-	</div>
+  <nav class= "nav justify-content-center navbar-expand-sm">
+    <ul class="nav">
+      <li class="nav-item">
+        <button type="button" class="btn-primary" onclick="location.href='{% url 'index' %}'">Home</button>
+      </li>
+      <li class="nav-item">
+        <button type="button" class="btn-primary dropdown-toggle" data-toggle="dropdown">Scalper</button>
+        <div class="dropdown-menu">
+          <p class="dropdown-header">Trading</p>
+          <div class="dropdown-item btn-group">
+            <button type="button" class="btn-primary" onclick="location.href='{% url 'Trading' %}?shift=True'">Real</button>
+            <button type="button" class="btn-secondary" onclick="location.href='{% url 'Trading' %}?shift=False'">Simulado</button>
+            <button type="button" class="btn-warning" onclick="location.href='{% url 'Trading' %}?shift=ALL'">TODO</button>            
+          </div>
+          <p class="dropdown-header">Traded</p>
+          <div class="dropdown-item btn-group">
+            <button type="button" class="btn-primary" onclick="location.href='{% url 'Traded' %}?shift=True'">Real</button>
+            <button type="button" class="btn-secondary" onclick="location.href='{% url 'Traded' %}?shift=False'">Simulado</button>
+            <button type="button" class="btn-warning" onclick="location.href='{% url 'Traded' %}?shift=ALL'">TODO</button>            
+          </div>
+          <p class="dropdown-header">Efectividad General</p>
+          <div class="dropdown-item btn-group">
+            <button type="button" class="btn-primary" onclick="location.href='{% url 'Stats' %}?shift=ALL'">Horas</button>
+            <button type="button" class="btn-primary">Diaria</button>
+            <button type="button" class="btn-primary">Pares</button>
+          </div>
+        </div>
+      </li>
+      <li class="nav-item">
+        <button type="button" class="btn-primary dropdown-toggle" data-toggle="dropdown">Inter Day</button>
+        <div class="dropdown-menu">
+          <p class="dropdown-header">Trading</p>
+          <div class="dropdown-item btn-group">
+            <button type="button" class="btn-primary">Real</button>
+            <button type="button" class="btn-secondary">Simulado</button>
+            <button type="button" class="btn-warning">TODO</button>            
+          </div>
+          <p class="dropdown-header">Traded</p>
+          <div class="dropdown-item btn-group">
+            <button type="button" class="btn-primary">Real</button>
+            <button type="button" class="btn-secondary">Simulado</button>
+            <button type="button" class="btn-warning">TODO</button>            
+          </div>
+          <p class="dropdown-header">Efectividad General</p>
+          <div class="dropdown-item btn-group">
+            <button type="button" class="btn-primary">Horas</button>
+            <button type="button" class="btn-primary">Diaria</button>
+            <button type="button" class="btn-primary">Pares</button>
+          </div>
+        </div>
+      </li>
+      <li class="nav-item">
+        <button type="button" class="btn-primary">Options</button>
+      </li>
+    </ul>
+  </nav>
 </div>
-<hr>
 {% block content %}
 {% endblock %}
 </body>
