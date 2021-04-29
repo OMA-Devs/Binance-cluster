@@ -25,7 +25,7 @@ SECRET_KEY = '&e*bw3s(fj0ljnaaeod^j=hm&l7#wa9y*mthsh7vv#k@45l5o4'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost","192.168.1.43", "192.168.1.44"]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -56,7 +56,7 @@ ROOT_URLCONF = 'gui.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ["/var/www/html/Binance/master/gui/templates"],
+        'DIRS': ["/var/www/html/gui/templates"],
         'APP_DIRS': False,
         'OPTIONS': {
             'context_processors': [

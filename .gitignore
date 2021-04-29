@@ -5,3 +5,4 @@ master/gui/gui/__pycache__/
 master/gui/data/__pycache__/
 master/gui/display/__pycache__/
 master/gui/__pycache__/
+.Dockerfile.swp
