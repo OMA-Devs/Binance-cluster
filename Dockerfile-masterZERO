@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM debian
 
 #install all the tools you might want to use in your container
 RUN apt-get update
@@ -12,7 +12,7 @@ RUN pip3 install django plotly mariadb
 #RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rust.sh && sh rust.sh -y
 RUN pip3 install python-binance
 
-RUN apt-get remove build-essential libffi-dev cargo curl nano -y && apt-get autoremove -y
+RUN apt-get remove build-essential libffi-dev cargo -y && apt-get autoremove -y
 #change working directory to root of apache webhost
 
 COPY ./master/vhost.conf /etc/apache2/sites-available/000-default.conf
