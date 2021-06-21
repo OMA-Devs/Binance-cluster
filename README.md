@@ -1,53 +1,70 @@
-# Binance-cluster
-## ¿Qué es?
-Binance-Cluster es un bot de trading de criptomonedas con énfasis en el scalping y el análisis de timeframes cortos, diseñado para ser corrido en un cluster del SBC Raspberry Pi (version de hardware indiferente)
-## ¿Que es un bot de trading?
-Es el programa de software que analiza y decide movimientos en un mercado de activos, en este casi, criptomonedas. Efectúa compras y ventas según el algoritmo otorgado con la intención de obtener beneficios de esos movimientos.
-## ¿Por qué cluster?
-Desde el principio, este programa ha ido unido a un perfil de energía bajo y la eficiencia del hardware. Se empezó desarrollando en una RPI 4, pero para evitar la ventilación y acelerar el proceso, se optó por una arquitectura de computación distribuida. Se dividieron las funciones y se creó un flujo de trabajo "servidor/cliente" en el que se ahondará más adelante.
-
-El resultado fue un cluster de RPI0W, que con menor capacidad de computación es capaz de acelerar 3 veces el bucle de funcionamiento del programa. Esta arquitectura también permite un escalado muy eficiente y un desarrollo muy organizado de las funciones.
-
-# Instalacion de Cluster
-La instalación del programa en los clientes y el servidor difiere solo en unas cuantas instrucciones. Por lo tanto, si NO se especifica nada, las instrucciones de instalación corresponden tanto a los clientes como al servidor.
-
-## Instalacion Apache
+# Manual de instalación de cluster Rpi0w y Rpi4b
+Este manual trata la instalación del cluster desde cero en una plataforma raspberry pi. El diseño funcional esta creado con 4 pi0 y 1 pi4b, pero puede componerse de cualquier combinacion. La organización manager/worker escogida también es arbitraria y a elección del desarrollador. Aquí se facilitarán los pasos de instalación.
+# Pasos iniciales
+## Instalación de sistemas operativos y Docker
+Se cargan las 5 Rpi con Raspbian. Se hace la elección de instalar raspbian con entorno gráfico en la 4 para facilidad de desarrollo, pero en las 0 se instala lite para optimizar recursos.
 
 ```bash
-sudo apt-get install apache2 php libapache2-mod-php -y
-sudo apt-get install libapache2-mod-wsgi-py3
+sudo apt-get update && sudo apt-get upgrade
+sudo apt-get install docker
 ```
+Para una configuración más rápida, se configuró cada Rpi con HDMI y teclado. Se puede modificar la imagen en la tarjeta SD para conectar automaticamente a alguna red wifi, pero no se hizo. El comando ```sudo raspi-config``` nos ayudará a conectarnos a la red y configurar otras cosas como la zona horaria y otros detalles.
 
-__Notas__: Desde la implementación de Django, creo que php y modPHP no son necesarios. La linea se actualizará en consecuentes instalaciones al comprobarlo.
-
-## Instalacion de las librerías python
-Se asume python 3. Solo testeado en python 3.7. Es importante usar la instrucción sudo para la instalación de las librerías. Si no, el servidor dará error al intentar importarlas.
+Los hostnames son completamente arbitrarios, pero por facilidad de reconocimiento aquí se les ha nombrado del siguiente modo:
+- pi4b
+- pi0w1
+- pi0w2
+- pi0w3
+- pi0w4
+### Notas
+- Modificar el archivo /etc/hosts de la máquina que vaya a dar ordenes al cluster ayudará enormemente a la organizacion, ya que es mas facil ordenar los hosts que recordar las ips
+- Importante activar las interfaces SSH y VNC (en el caso de la pi4) para conectarse una vez esten headless.
+## Instalación de base de datos permanente para el cluster
+Debido, en primera instancia a mi inexperiencia con Docker, prefiero tener la base de datos externa al cluster, aunque viva en una de las máquinas que lo corren. Se elige para esto la rpi4, de más capacidad general, como base para ser el manager y también la base de datos. Posiblemente también posea el almacenamiento compartido cuando se integre. Para esto ejecutamos los siguientes pasos.
 
 ```bash
-sudo pip3 install python-binance
-sudo pip3 install plotly
-sudo pip3 install django
+sudo apt-get install apache2 -y
+sudo apt-get install mariadb-server -y
+sudo apt-get my_sql_secure_installation
+sudo apt-get install phpmyadmin
 ```
+El sistema pedirá una contraseña para el usuario phpmyadmin. Recordarla, es una contraseña de administrador y llegado el caso puede ser necesaria.
 
-## Instalacion del repositorio
-Se recomienda el uso de las siguientes instrucciones, nombres y rutas. Se que alguna de las configuraciones no es la más adecuada en materia de seguridad, pero es algo que se ira mejorando con el tiempo. Por el momento, se desea un entorno de produccion local funcional.
+Desde ese momento se podrá acceder a phpmyadmin desde cualquier punto de la red local con ```192.168.ipPI/phpmyadmin```
 
+Con esto tendremos la configuración básica de la base de datos, a la espera de que se creen las tablas o se hagan consultas.
+
+# Configuración del cluster
+## Creacion del swarm
+1. ```ssh pi@pi4b```
+2. ```sudo docker swarm init --advertise-addr **IP DE pi4b** ```
+3. Tras eso se recibirá un token para agregar workers. Si se desea agregar mas managers (cosa recomendable) se debe correr el comando ```sudo docker swarm join-token manager``` y utilizar el token otorgado en los siguientes pasos.
+4. ```ssh pi@pi0wX```
+5. ```sudo docker swarm join --token **Aqui el token** 192.168.ipMANAGER:2377```
+6. Repetir los pasos __4__ y __5__ con cada nodo o utilizar un multiplexor de terminal.
+### Notas
+- Es muy aconsejable tener al menos 2 managers. En caso de que haya que reiniciar el unico manager o se caiga, el cluster se detendría. Aunque dado que en mi caso de desarrollo tanto la base de datos como el servicio princpal se alojan solo en una maquina, es un riesgo que estoy dispuesto a correr por simplicidad.
+
+## Testing de Swarm
 ```bash
-cd /var/www/html
-sudo git clone https://github.com/OMA-Devs/Binance-cluster
-sudo chmod -R 777 Binance-cluster/
-sudo chown -R www-data:www-data Binance-cluster/
-sudo mv Binance-cluster/ Binance
+sudo docker service create \
+    --name viz \
+    --publish 8080:8080/tcp \
+    --constraint node.role==manager \
+    --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
+    alexellis2/visualizer-arm:latest
 ```
-## Claves de API
-El programa hace uso de Binance, un exchange que permite el trading algoritmico. Para esto, provee una API y unas claves de acceso. Estas claves son obviamente intransferibles.
+Un visualizador de servicios debería haberse creado en la ipManager:8080. Esto demuestra que el cluster esta corriendo correctamente y se pueden lanzar los servicios de nuestro cluster.
 
-Para evitar hardcodear estas claves, se han añadido variables de entorno y estas se han importado desde el modulo OS de python. Para crear las variables de entorno. Para esto ejecutamos:
+## Claves de API para los nodos
+Aun falta por automatizar este paso, pero por el momento, la solucion que tengo es agregar las claves de API a mano con un multiplexor de terminales. Es rapido.
+SSH en cada nodo.
+
+El programa recurre a varias variables de entorno para funcionar, y aqui las definimos. Hasta que sepa pasarlas por Docker, es lo que hay.
 
 ```bash
 sudo nano ~/.profile
 ```
-y añadimos al final. Respetar los espacios entre los signos de `=` y las comillas. IMPORTANTE:
 
 ```bash
 export TEST_BINANCE_API_KEY="TEST_API_KEY HERE"
@@ -56,55 +73,15 @@ export BINANCE_API_KEY="REAL_API_KEY"
 export BINANCE_API_SEC="REAL_API_SECRET"
 ```
 
-## Django (NODO MAESTRO)
-Tras la instalación de Django en pip, aun queda por configurar para que el framework funcione. El repositorio viene con una copia del proyecto completamente creada y configurada. Sin embargo, el usuario siempre va a tener que reconfigurarla, ya que mis IP no seran las mismas que las de otros.
+## Configuración de Base de Datos
+Por defecto, el servidor SQL solo funciona en localhost y necesitamos hacerlo accesible desde cualquier parte del cluster. Para eso, modificamos un archivo de configuración de mariaDB de la siguiente manera:
+ ```bash
+ sudo nano /etc/mysql/mariadb.conf.d/50-server.cnf
+ ```
+ Buscamos la línea bind-address y cambiamos la ip actual (loopback) por 0.0.0.0
+ 
+A falta de que se automatize la creación de una plantilla de base de datos, se deberán ejecutar las siguientes instrucciones.
 
-1. Modificar /etc/hosts si corresponde.
-    * Corresponde modificarlo si vamos a utilizar un nombre de dominio, principalmente.
-2. Añadir host en ```ALLOWED_HOST```, ```settings.py```
-    * Dentro del proyecto de Django. Añadir tanto la IP privada, como ```127.0.0.1``` o localhost. Django no permitirá entrar a ninguna denominación que no esté aquí especificada.
-3. Añadir path en ```wsgi.py```. Esto eliminará muchisimos quebraderos de cabeza con la importacion de modulos propios. Es importante modificarlo si se va a usar un path diferente.
+sudo mariadb
+GRANT ALL ON *.binance
 
-## Configuración de Apache/Django (NODO MAESTRO)
-Tengo que reconocer sentirme orgulloso de esta pequeña sección. Odio las configuraciones de vhost. No se lo suficiente sobre backend como para sentirme a gusto en esto. Asi que haber conseguido una configuración que me permita un entorno de produccion local estable y sin sobresaltos es más de lo que podría haber pedido. Me imagino que podría hacerse de manera mas eficiente o mas segura.
-
-Para comenzar creamos un archivo de vhost en ```/etc/apache2/sites-avaible/*nombre.conf```
-
-Cuyo contenido será:
-```
-<VirtualHost *:80>
-	ServerName BinanceUI
-	ServerAlias localhost
-	ServerAdmin email@deladministrador.com
-	LogLevel warn
-	DocumentRoot /var/www/html/Binance/master/gui
-	WSGIPassAuthorization On
-	WSGIScriptAlias / /var/www/html/Binance/master/gui/gui/wsgi.py
-	#Cabe destacar que usamos el path a python de nuestro virtualenv
-	WSGIDaemonProcess BinanceUI python-path=/usr/lib/python3/dist-packages
-	WSGIProcessGroup BinanceUI
-	#En el errorlog podremos encontrar los errores del servidor de apps
-	ErrorLog "/var/log/apache2/error.log"
-	CustomLog "/var/log/apache2/binanceUI" common
-</VirtualHost>
-```
-IMPORTANTE sustituir los datos con los adecuados, sobre todo en materia de paths.
-
-Tras este último paso, solo nos quedan un par de comandos extra:
-
-```bash
-sudo a2dissite 000-default.conf
-sudo a2ensite *nombrevhost.conf
-sudo systemctl restart apache2
-```
-
-Y ya lo tenemos todo listo para poner a funcionar.
-
-# Inicialización y funcionamiento
-# Bibliografía
-
-https://docs.djangoproject.com/en/3.1/howto/deployment/wsgi/modwsgi/
-
-https://www.digitalocean.com/community/tutorials/como-configurar-virtual-hosts-de-apache-en-ubuntu-16-04-es
-
-http://blog.enriqueoriol.com/2014/06/lanzando-django-en-produccion-con.html

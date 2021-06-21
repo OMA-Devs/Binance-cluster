@@ -1,8 +1,8 @@
-client/config.py
-client/logs/
-client/__pycache__/
-master/gui/gui/__pycache__/
-master/gui/data/__pycache__/
-master/gui/display/__pycache__/
-master/gui/__pycache__/
+code/__pycache__/
+code/gui/gui/__pycache__/
+code/gui/data/__pycache__/
+code/gui/display/__pycache__/
+code/gui/__pycache__/
 .Dockerfile.swp
+.vscode/
+docs/internos/
