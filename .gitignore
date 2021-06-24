@@ -6,3 +6,5 @@ code/gui/__pycache__/
 .Dockerfile.swp
 .vscode/
 docs/internos/
+myKEY.txt
+mySEC.txt
