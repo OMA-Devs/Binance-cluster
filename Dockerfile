@@ -22,12 +22,12 @@ WORKDIR /var/www/html
 
 #copy your files, if you want to copy all use COPY . .
 RUN rm index.html
-COPY ./code/ .
+COPY . .
+#RUN ls
 #WORKDIR /var/www/html/code
 
 #Start the server, IF NEEDED
-RUN ls
-RUN --mount=type=secret,id=myKEY cat /run/secrets/myKEY > myKEY.txt
+RUN --mount=type=secret,id=myKEY python3 testDeploy.py /run/secrets/myKEY &
 CMD ["apachectl", "-D", "FOREGROUND"]
 
 #CMD ["ls", "-R", "/var/www/html"]
