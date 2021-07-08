@@ -847,7 +847,198 @@ class DB1:
 				conn.commit()
 		conn.close()
 
+class DB2:
+	def __init__(self):
+		self.user = f"binance"
+		self.password = "binance"
+		self.host = "192.168.1.200"
+		self.port = 3306
+		self.database = "binance"
+		#self.client = client
+	def getSymbols(self):
+		"""Obtiene una lista de pares limpia de la base de datos.
+		Requiere tratamiento porque la base de datos devuelve tuplas.
+		El tratamiento convierte las tuplas en diccionarios de mas facil utilización.
 
+		Returns:
+			[List]: Lista con todos los simbolos en formato diccionario y sus
+			reglas de trading.
+		"""
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		cur.execute("SELECT * FROM symbols")
+		clean = []
+		#Itera sobre la lista obtenida de la base de datos y convierte las tuplas de un solo elemento en cadenas.
+		for i in cur:
+			d = parseSymbol(i)
+			clean.append(d)
+		conn.close()
+		return clean
+	def updateSymbols(self):
+		symDict = self.getSymbols()
+		exchDict = self.client.get_exchange_info()["symbols"]
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		#######DELISTED LOOP######
+		delisted = []
+		for sym in symDict:
+			inList = False
+			for ex in exchDict:
+				if sym["symbol"] == ex["symbol"]:
+					inList = True
+			if inList == False:
+				delisted.append(sym["symbol"])
+				st = f"DELETE FROM symbols WHERE symbol='{sym['symbol']}'"
+				cur.execute(st)
+		#############################
+		#######NEWLISTED LOOP########
+		newlisted = []
+		for sym in exchDict:
+			inList = False
+			for ex in symDict:
+				if ex["symbol"] == sym["symbol"]:
+					inList = True
+			if inList == False:
+				newlisted.append(sym["symbol"])
+				minNotional = "-"
+				minQty = "-"
+				stepSize = "-"
+				precision = "-"
+				acierto = "0"
+				total = "0"
+				percent = "0"
+				s1 = "0"
+				m1 = "0"
+				servido = str(datetime.now())
+				for filt in sym["filters"]:
+					if filt["filterType"] == "MIN_NOTIONAL":
+						minNotional = filt["minNotional"]
+					elif filt["filterType"] == "LOT_SIZE":
+						minQty = filt["minQty"]
+						stepSize = filt["stepSize"]
+				try:
+					precision = sym["baseAssetPrecision"]
+				except KeyError:
+					pass
+				queryARR = ["'"+sym["symbol"]+"'",
+							"'"+minNotional+"'",
+							"'"+minQty+"'",
+							"'"+stepSize+"'",
+							"'"+str(precision)+"'",
+							"'"+acierto+"'",
+							"'"+total+"'",
+							"'"+percent+"'",
+							"'"+s1+"'",
+							"'"+m1+"'",
+							"'"+servido+"'"]
+				querySTR = ",".join(queryARR)
+				st = f"INSERT INTO symbols VALUES({querySTR})"
+				#print(st)
+				cur.execute(st)
+				conn.commit()
+		#############################
+		########CROP UTILS###########
+		query = f"SELECT * FROM `symbols` WHERE symbol NOT LIKE '%BTC' AND symbol NOT LIKE '%ETH' AND symbol NOT LIKE '%BNB'"
+		cur.execute(query)
+		toCrop = []
+		for pair in cur:
+			toCrop.append(pair[0])
+		for pair in toCrop:
+			query = f"DELETE FROM symbols WHERE symbol = '{pair}'"
+			cur.execute(query)
+			conn.commit()
+		#############################
+		#########UPDATE TRENDS#######
+		''' Se obtienen las tendencias de 4 periodos en intervalos de 1S y 1M'''
+		symDict = self.getSymbols()
+		for sym in symDict:
+			kline1S = parseKline(client.get_historical_klines(sym['symbol'], Client.KLINE_INTERVAL_1WEEK, "4 weeks ago"))
+			if len(kline1S) > 0:
+				trend = kline1S[-1]["close"]- kline1S[0]["close"]
+				if trend > 0:
+					trendString = "BULL"
+				else:
+					trendString = "BEAR"
+				query = f"UPDATE symbols SET 1S = '{trendString}' WHERE symbol = '{sym['symbol']}'"
+				cur.execute(query)
+				conn.commit()
+			kline1M = parseKline(client.get_historical_klines(sym['symbol'], Client.KLINE_INTERVAL_1MONTH, "4 months ago"))
+			if len(kline1M) > 0:
+				trend = kline1M[-1]["close"]- kline1M[0]["close"]
+				if trend > 0:
+					trendString = "BULL"
+				else:
+					trendString = "BEAR"
+				query = f"UPDATE symbols SET 1M = '{trendString}' WHERE symbol = '{sym['symbol']}'"
+				cur.execute(query)
+				conn.commit()
+		#############################
+		########UPDATE PERCENTS######
+		'''symDict = self.getSymbols()
+		for sym in symDict:
+			trades = self.getPairHistoric("scalper", pair= sym["symbol"])
+			if len(trades)>0:
+				aciertos = 0
+				total = 0
+				for trade in trades:
+					total = total + 1
+					if Decimal(trade["sellPrice"]) > Decimal(trade["evalPrice"]):
+						aciertos = aciertos + 1
+				perc = (aciertos/total)*100
+				st = f"UPDATE symbols SET acierto = '{aciertos}', total = '{total}', percent = '{perc}' WHERE symbol = '{sym['symbol']}' "
+				cur.execute(st)
+				conn.commit()'''
+		#################################
+		conn.close()
+		st = ""
+		for i in delisted:
+			st = st+f"{i}\n"
+		print("FUERA:")
+		print(st)
+		st = ""
+		print("-"*30)
+		for i in newlisted:
+			st = st+f"{i}\n"
+		print("NUEVOS:")
+		print(st)
+		print("-"*30)
+		print(f"toCrop: {len(toCrop)}")
+	def getAPI(self, user):
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		st = f"SELECT * FROM users WHERE name='{user}'"
+		cur.execute(st)
+		apiKEYS=[]
+		for idAPI in cur:
+			apiKEYS.append(idAPI[1])
+			apiKEYS.append(idAPI[2])		
+		return apiKEYS
 
 if __name__ == "__main__":
 	from os import environ
