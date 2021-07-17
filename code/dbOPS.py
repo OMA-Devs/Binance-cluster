@@ -854,7 +854,6 @@ class DB2:
 		self.host = "192.168.1.200"
 		self.port = 3306
 		self.database = "binance"
-		#self.client = client
 	def getSymbols(self):
 		"""Obtiene una lista de pares limpia de la base de datos.
 		Requiere tratamiento porque la base de datos devuelve tuplas.
@@ -883,9 +882,9 @@ class DB2:
 			clean.append(d)
 		conn.close()
 		return clean
-	def updateSymbols(self):
+	def updateSymbols(self, client):
 		symDict = self.getSymbols()
-		exchDict = self.client.get_exchange_info()["symbols"]
+		exchDict = client.get_exchange_info()["symbols"]
 		try:
 			conn = mariadb.connect(
 				user=self.user,
@@ -898,7 +897,7 @@ class DB2:
 			print(f"Error connecting to MariaDB Platform: {e}")
 		cur = conn.cursor()
 		#######DELISTED LOOP######
-		delisted = []
+		'''delisted = []
 		for sym in symDict:
 			inList = False
 			for ex in exchDict:
@@ -907,17 +906,17 @@ class DB2:
 			if inList == False:
 				delisted.append(sym["symbol"])
 				st = f"DELETE FROM symbols WHERE symbol='{sym['symbol']}'"
-				cur.execute(st)
+				cur.execute(st)'''
 		#############################
 		#######NEWLISTED LOOP########
 		newlisted = []
-		for sym in exchDict:
+		for ex in exchDict:
 			inList = False
-			for ex in symDict:
+			for sym in symDict:
 				if ex["symbol"] == sym["symbol"]:
 					inList = True
-			if inList == False:
-				newlisted.append(sym["symbol"])
+			if inList == False and ex["symbol"][-3:] in TRADEABLE_ASSETS:
+				newlisted.append(ex["symbol"])
 				minNotional = "-"
 				minQty = "-"
 				stepSize = "-"
@@ -928,17 +927,17 @@ class DB2:
 				s1 = "0"
 				m1 = "0"
 				servido = str(datetime.now())
-				for filt in sym["filters"]:
+				for filt in ex["filters"]:
 					if filt["filterType"] == "MIN_NOTIONAL":
 						minNotional = filt["minNotional"]
 					elif filt["filterType"] == "LOT_SIZE":
 						minQty = filt["minQty"]
 						stepSize = filt["stepSize"]
 				try:
-					precision = sym["baseAssetPrecision"]
+					precision = ex["baseAssetPrecision"]
 				except KeyError:
 					pass
-				queryARR = ["'"+sym["symbol"]+"'",
+				queryARR = ["'"+ex["symbol"]+"'",
 							"'"+minNotional+"'",
 							"'"+minQty+"'",
 							"'"+stepSize+"'",
@@ -950,13 +949,14 @@ class DB2:
 							"'"+m1+"'",
 							"'"+servido+"'"]
 				querySTR = ",".join(queryARR)
-				st = f"INSERT INTO symbols VALUES({querySTR})"
+				#st = f"INSERT INTO symbols VALUES({querySTR})"
 				#print(st)
-				cur.execute(st)
-				conn.commit()
+				#cur.execute(st)
+				#conn.commit()
+		print(newlisted)
 		#############################
 		########CROP UTILS###########
-		query = f"SELECT * FROM `symbols` WHERE symbol NOT LIKE '%BTC' AND symbol NOT LIKE '%ETH' AND symbol NOT LIKE '%BNB'"
+		'''query = f"SELECT * FROM `symbols` WHERE symbol NOT LIKE '%BTC' AND symbol NOT LIKE '%ETH' AND symbol NOT LIKE '%BNB'"
 		cur.execute(query)
 		toCrop = []
 		for pair in cur:
@@ -964,11 +964,11 @@ class DB2:
 		for pair in toCrop:
 			query = f"DELETE FROM symbols WHERE symbol = '{pair}'"
 			cur.execute(query)
-			conn.commit()
+			conn.commit()'''
 		#############################
 		#########UPDATE TRENDS#######
 		''' Se obtienen las tendencias de 4 periodos en intervalos de 1S y 1M'''
-		symDict = self.getSymbols()
+		'''symDict = self.getSymbols()
 		for sym in symDict:
 			kline1S = parseKline(client.get_historical_klines(sym['symbol'], Client.KLINE_INTERVAL_1WEEK, "4 weeks ago"))
 			if len(kline1S) > 0:
@@ -989,7 +989,7 @@ class DB2:
 					trendString = "BEAR"
 				query = f"UPDATE symbols SET 1M = '{trendString}' WHERE symbol = '{sym['symbol']}'"
 				cur.execute(query)
-				conn.commit()
+				conn.commit()'''
 		#############################
 		########UPDATE PERCENTS######
 		'''symDict = self.getSymbols()
@@ -1008,7 +1008,7 @@ class DB2:
 				conn.commit()'''
 		#################################
 		conn.close()
-		st = ""
+		'''st = ""
 		for i in delisted:
 			st = st+f"{i}\n"
 		print("FUERA:")
@@ -1020,7 +1020,7 @@ class DB2:
 		print("NUEVOS:")
 		print(st)
 		print("-"*30)
-		print(f"toCrop: {len(toCrop)}")
+		print(f"toCrop: {len(toCrop)}")'''
 	def getAPI(self, user):
 		try:
 			conn = mariadb.connect(
@@ -1041,22 +1041,7 @@ class DB2:
 		return apiKEYS
 
 if __name__ == "__main__":
-	from os import environ
-	api_key = environ.get("TEST_BINANCE_API")
-	api_sec = environ.get("TEST_BINANCE_SEC")
-	real_api_key = environ.get("BINANCE_API_KEY")
-	real_api_sec = environ.get("BINANCE_API_SEC")
-	client = Client(real_api_key,real_api_sec)
-	#db = DB("../binance.db", client, "ALL")
-	##db.updateSymbols()
-	'''for i in ["ALL","BTC","ETH","BNB"]:
-		print(i)
-		shift = db.getBestShift(65,asset=i)
-		for ind,h in enumerate(shift["hour"]):
-			print(f"{h}: {shift['perc'][ind]:.2f}")'''
-	#db.getMostProficent()
-	#db.getCorrelation(assets="ETH")
-	db1 = DB1(client)
+	db1 = DB2()
 	#db1.updateSymbols()
-	db1.getHistoricFromAPI(pair="BTCEUR")
+	#db1.getHistoricFromAPI(pair="BTCEUR")
 
