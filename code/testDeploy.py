@@ -10,7 +10,7 @@ from dbOPS import DB2 as DB
 from dbOPS import parseKline
 from sys import argv
 
-workerTypes = ["dbWorker"]
+workerTypes = ["dbWorker", "dbMiner"]
 
 db = DB()
 
@@ -41,23 +41,44 @@ class Worker:
 class dbWorker(Worker):
 	def __init__(self, user, workType):
 		super().__init__(user, workType)
-		self.updateTime = {"hour": 2, "minute": 0}
+		self.updateTime = timedelta(hours=2)
+		#self.updateTime = {"hour": 2, "minute": 0}
 	def startWork(self, instaTrigger = False):
-		now = datetime.now()
+		last = datetime.now()
 		if instaTrigger == False:
+			db.updateSymbols(self.client)
+			print(f"Next Check at: {last+self.updateTime}")
 			while True:
 				now = datetime.now()
-				if now.hour == self.updateTime["hour"] and now.minute == self.updateTime["minute"]:
+				if now >= last + self.updateTime:
 					db.updateSymbols(self.client)
+					last = now
 		elif instaTrigger == True:
 			db.updateSymbols(self.client)
+
+class dbMiner(Worker):
+	def __init__(self, user, workType):
+		super().__init__(user, workType)
+		self.servType = "servData"
+	def startWork(self):
+		pairs = db.servePairs(self.servType)
+		for pair in pairs:
+			print(f'Checking {pair["symbol"]} in db')
+			db._checkData(pair["symbol"])
 
 		
 if __name__ == "__main__":
 	#test_general()
+	##argv1 = USER
+	##argv2 = workerType
 	if argv[2] in workerTypes:
 		if argv[2] == "dbWorker":
 			worker = dbWorker(argv[1], argv[2])
-		worker.startWork(instaTrigger=True)
+		if argv[2] == "dbMiner":
+			worker = dbMiner(argv[1], argv[2])
+		try:
+			worker.startWork()
+		except KeyboardInterrupt:
+			print(f"Proceso terminado manualmente.")
 	else:
 		print("WorkerType No Definido")

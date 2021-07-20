@@ -854,6 +854,87 @@ class DB2:
 		self.host = "192.168.1.200"
 		self.port = 3306
 		self.database = "binance"
+	def _insertSymbol(self, data):
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database=self.database
+				)
+		except mariadb.Error as e:
+			print(f"Error connecting to MariaDB Platform: {e}")
+		minNotional = "-"
+		minQty = "-"
+		stepSize = "-"
+		precision = "-"
+		acierto = "0"
+		total = "0"
+		percent = "0"
+		s1 = "0"
+		m1 = "0"
+		servido = str(datetime.now())
+		#servScalper = "-"
+		#servData = "-"
+		for filt in data["filters"]:
+			if filt["filterType"] == "MIN_NOTIONAL":
+				minNotional = filt["minNotional"]
+			elif filt["filterType"] == "LOT_SIZE":
+				minQty = filt["minQty"]
+				stepSize = filt["stepSize"]
+		try:
+			precision = data["baseAssetPrecision"]
+		except KeyError:
+			pass
+		queryARR = ["'"+data["symbol"]+"'",
+					"'"+minNotional+"'",
+					"'"+minQty+"'",
+					"'"+stepSize+"'",
+					"'"+str(precision)+"'",
+					"'"+acierto+"'",
+					"'"+total+"'",
+					"'"+percent+"'",
+					"'"+s1+"'",
+					"'"+m1+"'",
+					"'"+servido+"'"]
+					#"'"+servScalper+"'",
+					#"'"+servData+"'"]
+		querySTR = ",".join(queryARR)
+		st = f"INSERT INTO symbols VALUES({querySTR})"
+		#print(st)
+		cur.execute(st)
+		conn.commit()
+	def _checkData(self,symbol):
+		try:
+			conn = mariadb.connect(
+				user=self.user,
+				password=self.password,
+				host=self.host,
+				port=self.port,
+				database="data"
+				)
+		except mariadb.Error as e:
+				print(f"Error connecting to MariaDB Platform: {e}")
+		cur = conn.cursor()
+		'''try:
+			kline = parseKline(self.client.get_historical_klines(symbol, Client.KLINE_INTERVAL_1MINUTE, start_str= start, end_str= end))
+		except (Rexceptions.ConnectionError, Uexceptions.ConnectionError,
+			Uexceptions.ReadTimeoutError, Rexceptions.ReadTimeout):
+			kline = []
+			print(f"--> Connection reset, skipping")
+		if len(kline) > 0:'''
+		query = f"CREATE TABLE IF NOT EXISTS `{symbol}` (`openTime` DATETIME NOT NULL , `open` DECIMAL(40,8) NOT NULL , `high` DECIMAL(40,8) NOT NULL , `low` DECIMAL(40,8) NOT NULL , `close` DECIMAL(40,8) NOT NULL, `12ema` DECIMAL(40,8) NULL, `26ema` DECIMAL(40,8) NULL, `9ema` DECIMAL(40,8) NULL, `servido` DATETIME NULL ) ENGINE = InnoDB;"
+		cur.execute(query)
+		query = f"SELECT * FROM {symbol} ORDER BY openTime ASC LIMIT 1"
+		cur.execute(query)
+		for point in cur:
+			print(point)
+		'''for candle in kline:
+				query = f"INSERT INTO {pair}_historic VALUES('{candle['openTime']}', '{candle['open']}', '{candle['high']}', '{candle['low']}', '{candle['close']}')"
+				cur.execute(query)
+				conn.commit()'''
+		conn.close()
 	def getSymbols(self):
 		"""Obtiene una lista de pares limpia de la base de datos.
 		Requiere tratamiento porque la base de datos devuelve tuplas.
@@ -897,7 +978,7 @@ class DB2:
 			print(f"Error connecting to MariaDB Platform: {e}")
 		cur = conn.cursor()
 		#######DELISTED LOOP######
-		'''delisted = []
+		delisted = []
 		for sym in symDict:
 			inList = False
 			for ex in exchDict:
@@ -905,8 +986,10 @@ class DB2:
 					inList = True
 			if inList == False:
 				delisted.append(sym["symbol"])
-				st = f"DELETE FROM symbols WHERE symbol='{sym['symbol']}'"
-				cur.execute(st)'''
+				if len(delisted) > 0:
+					st = f"DELETE FROM symbols WHERE symbol='{sym['symbol']}'"
+					cur.execute(st)
+		print(f"Delisted: {delisted}")
 		#############################
 		#######NEWLISTED LOOP########
 		newlisted = []
@@ -917,54 +1000,8 @@ class DB2:
 					inList = True
 			if inList == False and ex["symbol"][-3:] in TRADEABLE_ASSETS:
 				newlisted.append(ex["symbol"])
-				minNotional = "-"
-				minQty = "-"
-				stepSize = "-"
-				precision = "-"
-				acierto = "0"
-				total = "0"
-				percent = "0"
-				s1 = "0"
-				m1 = "0"
-				servido = str(datetime.now())
-				for filt in ex["filters"]:
-					if filt["filterType"] == "MIN_NOTIONAL":
-						minNotional = filt["minNotional"]
-					elif filt["filterType"] == "LOT_SIZE":
-						minQty = filt["minQty"]
-						stepSize = filt["stepSize"]
-				try:
-					precision = ex["baseAssetPrecision"]
-				except KeyError:
-					pass
-				queryARR = ["'"+ex["symbol"]+"'",
-							"'"+minNotional+"'",
-							"'"+minQty+"'",
-							"'"+stepSize+"'",
-							"'"+str(precision)+"'",
-							"'"+acierto+"'",
-							"'"+total+"'",
-							"'"+percent+"'",
-							"'"+s1+"'",
-							"'"+m1+"'",
-							"'"+servido+"'"]
-				querySTR = ",".join(queryARR)
-				#st = f"INSERT INTO symbols VALUES({querySTR})"
-				#print(st)
-				#cur.execute(st)
-				#conn.commit()
-		print(newlisted)
-		#############################
-		########CROP UTILS###########
-		'''query = f"SELECT * FROM `symbols` WHERE symbol NOT LIKE '%BTC' AND symbol NOT LIKE '%ETH' AND symbol NOT LIKE '%BNB'"
-		cur.execute(query)
-		toCrop = []
-		for pair in cur:
-			toCrop.append(pair[0])
-		for pair in toCrop:
-			query = f"DELETE FROM symbols WHERE symbol = '{pair}'"
-			cur.execute(query)
-			conn.commit()'''
+				self.insertSymbol(ex)
+		print(f"New Listed: {newlisted}")
 		#############################
 		#########UPDATE TRENDS#######
 		''' Se obtienen las tendencias de 4 periodos en intervalos de 1S y 1M'''
@@ -1008,19 +1045,6 @@ class DB2:
 				conn.commit()'''
 		#################################
 		conn.close()
-		'''st = ""
-		for i in delisted:
-			st = st+f"{i}\n"
-		print("FUERA:")
-		print(st)
-		st = ""
-		print("-"*30)
-		for i in newlisted:
-			st = st+f"{i}\n"
-		print("NUEVOS:")
-		print(st)
-		print("-"*30)
-		print(f"toCrop: {len(toCrop)}")'''
 	def getAPI(self, user):
 		try:
 			conn = mariadb.connect(
@@ -1039,6 +1063,30 @@ class DB2:
 			apiKEYS.append(idAPI[1])
 			apiKEYS.append(idAPI[2])		
 		return apiKEYS
+	def servePairs(self, serveType):
+			try:
+				conn = mariadb.connect(
+					user=self.user,
+					password=self.password,
+					host=self.host,
+					port=self.port,
+					database=self.database
+					)
+			except mariadb.Error as e:
+				print(f"Error connecting to MariaDB Platform: {e}")
+			cur = conn.cursor()
+			query = f"SELECT * FROM symbols ORDER BY servido ASC LIMIT 50"
+			cur.execute(query)
+			toServe = []
+			for pair in cur:
+				toServe.append(parseSymbol(pair))
+			for i in toServe:
+				#print(i[0])
+				query = f"UPDATE symbols SET {serveType} = '{datetime.now()}' WHERE symbol = '{i['symbol']}'"
+				cur.execute(query)
+				conn.commit()
+			conn.close()
+			return toServe
 
 if __name__ == "__main__":
 	db1 = DB2()
